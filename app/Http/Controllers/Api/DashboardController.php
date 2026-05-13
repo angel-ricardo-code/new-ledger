@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\ReconcileRequest;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +25,6 @@ class DashboardController extends Controller
         $totals = $transactions->groupBy('type')->map(fn($g) => $g->sum('amount'));
         $incomeTotal = $totals->get('income', 0);
         $expenseTotal = $totals->get('expense', 0);
-        $reconciliationCount = $transactions->where('type', 'reconciliation')->count();
         $balance = $incomeTotal - $expenseTotal;
 
         $dailySeries = $transactions->groupBy(fn($t) => $t->date->format('Y-m-d'))
@@ -56,45 +54,18 @@ class DashboardController extends Controller
         $prevMonth = date('Y-m', strtotime($month . '-01 -1 month'));
         $prevStart = "{$prevMonth}-01";
         $prevEnd = date('Y-m-t', strtotime($prevStart));
-        $prevTx = Transaction::whereBetween('date', [$prevStart, $prevEnd])
-            ->where('type', '!=', 'reconciliation')
-            ->get();
+        $prevTx = Transaction::whereBetween('date', [$prevStart, $prevEnd])->get();
         $prevIncome = $prevTx->where('type', 'income')->sum('amount');
         $prevExpense = $prevTx->where('type', 'expense')->sum('amount');
         $prevBalance = $prevIncome - $prevExpense;
 
-        $reconciliationTotal = $transactions->where('type', 'reconciliation')->sum('amount');
-        $adjustedBalance = $balance + $reconciliationTotal;
-
         return response()->json([
-            'balance' => $adjustedBalance,
+            'balance' => $balance,
             'income_total' => $incomeTotal,
             'expense_total' => $expenseTotal,
-            'reconciliation_count' => $reconciliationCount,
-            'reconciliation_total' => $reconciliationTotal,
             'daily_series' => $dailySeries,
             'category_series' => $categorySeries,
-            'vs_previous' => $adjustedBalance - $prevBalance,
+            'vs_previous' => $balance - $prevBalance,
         ]);
-    }
-
-    public function reconcile(ReconcileRequest $request): JsonResponse
-    {
-        $data = $request->validated();
-        $amount = $data['counted_amount'] - $data['app_balance'];
-
-        if (abs($amount) < 0.01) {
-            return response()->json(['message' => 'No hay diferencia que reconciliar'], 200);
-        }
-
-        $transaction = Transaction::create([
-            'date' => $data['date'],
-            'amount' => abs($amount),
-            'type' => 'reconciliation',
-            'category_id' => null,
-            'note' => $amount > 0 ? 'Sobrante en caja' : 'Faltante en caja',
-        ]);
-
-        return response()->json($transaction, 201);
     }
 }

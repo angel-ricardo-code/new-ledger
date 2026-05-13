@@ -144,7 +144,6 @@
   .denom-item input { width: 60px; background: var(--elevated); border: 1px solid var(--separator); border-radius: 8px; color: var(--text); text-align: center; padding: 6px; font-size: 15px; font-family: inherit; }
   .cash-result { text-align: center; margin: 24px 0 16px; }
   .cash-result .amount { font-size: 36px; font-weight: 700; color: var(--accent); }
-  .btn-full { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 17px; font-weight: 600; font-family: inherit; cursor: pointer; }
 
   /* FAB */
   .fab {
@@ -385,7 +384,6 @@
         <div style="font-size:13px;color:var(--secondary)">Total contado</div>
         <div class="amount" id="cash-counted">$0.00</div>
       </div>
-      <button class="btn-full" id="reconcile-btn">Reconciliar</button>
     </div>
   </div>
 
@@ -516,12 +514,6 @@ const getCategoryIcon = (icon, color = '#8E8E93') => ICONS[icon] || ICONS.circle
 
 const api = {
   parseError(res, text) {
-    console.log('=== API ERROR DEBUG ===');
-    console.log('Status:', res.status);
-    console.log('StatusText:', res.statusText);
-    console.log('Content-Type:', res.headers.get('content-type'));
-    console.log('Response text:', text.substring(0, 500));
-    console.log('========================');
     try {
       const json = JSON.parse(text);
       if (json.message) return json.message;
@@ -531,18 +523,14 @@ const api = {
         return Array.isArray(firstError) ? firstError[0] : firstError;
       }
       return text;
-    } catch (e) { 
-      return `Error ${res.status}: ${text.substring(0, 100)}`; 
-    }
+    } catch (e) { return `Error ${res.status}`; }
   },
   async get(url) {
     const res = await fetch(url);
-    console.log('GET:', url, 'Status:', res.status);
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     return res.json();
   },
   async post(url, data) {
-    console.log('POST:', url, 'Data:', data);
     const res = await fetch(url, { 
       method: 'POST', 
       headers: { 
@@ -551,7 +539,6 @@ const api = {
       }, 
       body: JSON.stringify(data) 
     });
-    console.log('POST Response:', res.status, res.statusText);
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     return res.json();
   },
@@ -646,18 +633,6 @@ const cash = {
       this.total += parseFloat(inp.value || 0) * parseFloat(inp.dataset.denom);
     });
     document.getElementById('cash-counted').textContent = ui.formatMoney(this.total);
-  },
-  async reconcile() {
-    const balance = parseFloat(document.getElementById('balance-total').textContent.replace(/[^0-9.-]/g, '')) || 0;
-    const today = new Date().toISOString().split('T')[0];
-    try {
-      await api.post('/api/reconcile', { counted_amount: this.total, app_balance: balance, date: today });
-      ui.toast('Reconciliación registrada');
-      this.total = 0;
-      document.querySelectorAll('.denom-input').forEach(inp => inp.value = 0);
-      document.getElementById('cash-counted').textContent = '$0.00';
-      await app.loadData();
-    } catch (e) { ui.toast('Error: ' + e.message); }
   }
 };
 
@@ -733,11 +708,18 @@ const app = {
   updateMonthLabels() {
     const label = ui.formatMonthLabel(this.month);
     document.querySelectorAll('[id^="current-month"]').forEach(el => el.textContent = label);
+    const isCurrentMonth = this.month === new Date().toISOString().slice(0, 7);
+    document.querySelectorAll('[id^="next-month"]').forEach(btn => {
+      btn.style.display = isCurrentMonth ? 'none' : '';
+    });
   },
   changeMonth(delta) {
     const [y, m] = this.month.split('-').map(Number);
-    const date = new Date(y, m - 1 + delta);
-    this.month = date.toISOString().slice(0, 7);
+    const newDate = new Date(y, m - 1 + delta);
+    const now = new Date();
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    if (newDate > currentMonth) return;
+    this.month = newDate.toISOString().slice(0, 7);
     this.updateMonthLabels();
     this.loadData();
   },
@@ -821,16 +803,11 @@ const app = {
         </div>
         <div class="day-cats">${cats.map(c => `<div class="day-cat"><div class="cat-dot" style="background:${c.color}"></div><div class="cat-lbl">${c.name}</div><div class="cat-val">${c.total >= 0 ? '+' : ''}${ui.formatMoney(c.total)}</div></div>`).join('')}</div>
         <div class="day-tx">
-          ${d.transactions.map(t => {
-            const isReconciliation = t.type === 'reconciliation';
-            const iconName = isReconciliation ? 'wallet' : (t.category?.icon || 'circle');
-            const iconColor = isReconciliation ? 'var(--indigo)' : (t.category?.color_hex || 'var(--secondary)');
-            const txClass = isReconciliation ? (t.amount > 0 ? 'income' : 'expense') : t.type;
-            return `
+          ${d.transactions.map(t => `
             <div class="tx-row" data-id="${t.id}" style="display:flex;align-items:center">
-              <div class="tx-icon" style="color:${iconColor}">${getCategoryIcon(iconName, iconColor)}</div>
-              <div class="tx-info"><div class="tx-name">${t.note || 'Sin descripción'}${isReconciliation ? ' <span style="color:var(--indigo);font-size:11px;text-transform:uppercase">RECONCILIACIÓN</span>' : ''}</div><div class="tx-time">${t.category?.name || 'Sin categoría'} • ${new Date(t.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div></div>
-              <div class="tx-amount ${txClass}" style="margin-left:8px">${txClass === 'expense' ? '-' : '+'}${ui.formatMoney(t.amount)}</div>
+              <div class="tx-icon" style="color:${t.category?.color_hex || 'var(--secondary)'}">${getCategoryIcon(t.category?.icon || 'circle', t.category?.color_hex || 'var(--secondary)')}</div>
+              <div class="tx-info"><div class="tx-name">${t.note || 'Sin descripción'}</div><div class="tx-time">${t.category?.name || 'Sin categoría'} • ${new Date(t.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div></div>
+              <div class="tx-amount ${t.type}" style="margin-left:8px">${t.type === 'expense' ? '-' : '+'}${ui.formatMoney(t.amount)}</div>
               <button class="tx-delete" data-id="${t.id}" style="background:none;border:none;color:var(--red);cursor:pointer;padding:8px;opacity:0.6;margin-left:4px">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
@@ -900,8 +877,6 @@ document.getElementById('btn-add-category').addEventListener('click', async () =
     ui.toast('Categoría agregada');
   } catch (e) { ui.toast('Error: ' + e.message); }
 });
-
-document.getElementById('reconcile-btn').addEventListener('click', () => cash.reconcile());
 
 document.addEventListener('DOMContentLoaded', () => app.init());
 </script>

@@ -16,18 +16,9 @@ class StoreTransactionRequest extends FormRequest
         return [
             'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'amount' => ['required', 'numeric', 'gt:0'],
-            'type' => ['required', 'in:income,expense,reconciliation'],
+            'type' => ['required', 'in:income,expense'],
             'category_id' => ['nullable', 'exists:categories,id'],
             'note' => ['nullable', 'string', 'max:255'],
         ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if ($this->type !== 'reconciliation') {
-            $this->merge(['category_id' => $this->category_id]);
-        } else {
-            $this->merge(['category_id' => null]);
-        }
     }
 }

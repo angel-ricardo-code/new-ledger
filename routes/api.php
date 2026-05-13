@@ -14,4 +14,3 @@ Route::get('/categories', [CategoryController::class, 'index']);
 Route::post('/categories', [CategoryController::class, 'store']);
 
 Route::get('/dashboard', [DashboardController::class, 'index']);
-Route::post('/reconcile', [DashboardController::class, 'reconcile']);
