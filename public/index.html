@@ -324,6 +324,46 @@
   .recon-row .recon-amount.surplus { color: var(--green); }
   .recon-row .recon-amount.shortage { color: var(--red); }
   .recon-row .recon-amount.exact { color: var(--secondary); }
+
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  @media (min-width: 900px) { .kpi-grid { grid-template-columns: repeat(4, 1fr); } }
+  .kpi-card {
+    background: var(--surface); border-radius: 16px; padding: 16px;
+    border: 1px solid var(--separator);
+  }
+  .kpi-card .kpi-val { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .kpi-card .kpi-label { font-size: 12px; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.3px; }
+  .kpi-card .kpi-sub { font-size: 13px; color: var(--secondary); margin-top: 2px; }
+
+  .top-tx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  @media (max-width: 600px) { .top-tx-grid { grid-template-columns: 1fr; } }
+  .top-tx-card {
+    background: var(--surface); border-radius: 16px; padding: 14px;
+    border: 1px solid var(--separator); display: flex; align-items: center; gap: 12px;
+  }
+  .top-tx-card .tx-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .top-tx-card .tx-icon svg { width: 18px; height: 18px; }
+  .top-tx-card .tx-info { flex: 1; min-width: 0; }
+  .top-tx-card .tx-info .tx-n { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top-tx-card .tx-info .tx-d { font-size: 12px; color: var(--secondary); }
+  .top-tx-card .tx-amt { font-size: 16px; font-weight: 700; }
+
+  .chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .chart-card {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--separator);
+  }
+  .chart-card .chart-wrap { height: 180px; }
 </style>
 </head>
 <body>
@@ -398,8 +438,28 @@
           </button>
         </div>
       </div>
-      <div class="cat-card" style="margin-bottom:20px"><div class="chart-wrap"><canvas id="chartBar"></canvas></div></div>
-      <div class="cat-card"><div class="chart-wrap"><canvas id="chartDoughnut"></canvas></div></div>
+
+      <div class="kpi-grid" id="kpi-grid"></div>
+
+      <div class="section-title">Comparativa mensual</div>
+      <div class="chart-grid">
+        <div class="chart-card" style="grid-column:1/-1">
+          <div class="chart-wrap"><canvas id="chartOverview"></canvas></div>
+        </div>
+      </div>
+
+      <div class="section-title">Mayores transacciones</div>
+      <div id="top-transactions-container"></div>
+
+      <div class="section-title">Gastos por día y categoría</div>
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-wrap"><canvas id="chartWeekday"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-wrap" style="max-width:260px;margin:0 auto"><canvas id="chartDoughnut"></canvas></div>
+        </div>
+      </div>
     </div>
 
     <!-- CAJA -->
@@ -685,6 +745,16 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(btn.dataset.target).classList.add('active');
+    if (btn.dataset.target === 'page-analytics') {
+      if (!analyticsChartsReady) {
+        requestAnimationFrame(() => initAnalyticsCharts());
+      }
+      requestAnimationFrame(() => {
+        chartOverview?.resize();
+        chartWeekday?.resize();
+        chartDoughnut?.resize();
+      });
+    }
   });
 });
 document.querySelectorAll('.segment').forEach(seg => {
@@ -788,44 +858,123 @@ const cash = {
 };
 
 // ===== CHARTS =====
-let chartBar, chartDoughnut;
+let chartOverview, chartWeekday, chartDoughnut;
+let analyticsChartsReady = false;
+const analyticsCache = { overview: null, top: null, weekday: null, dashboard: null };
+
 function initCharts() {
-  chartBar = new Chart(document.getElementById('chartBar'), {
+}
+
+function initAnalyticsCharts() {
+  const chartOpts = (extra = {}) => ({
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { grid: { display: false }, ticks: { color: '#8E8E93' } }, y: { display: false } },
+    ...extra,
+  });
+
+  chartOverview = new Chart(document.getElementById('chartOverview'), {
     type: 'bar', data: { labels: [], datasets: [] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false }, ticks: { color: '#8E8E93' } }, y: { display: false } } }
+    options: chartOpts(),
+  });
+  chartWeekday = new Chart(document.getElementById('chartWeekday'), {
+    type: 'bar', data: { labels: [], datasets: [] },
+    options: chartOpts({ scales: { x: { grid: { display: false }, ticks: { color: '#8E8E93' } }, y: { display: false, beginAtZero: true } } }),
   });
   chartDoughnut = new Chart(document.getElementById('chartDoughnut'), {
     type: 'doughnut', data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
     options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#FFFFFF', usePointStyle: true } } } }
   });
+
+  if (analyticsCache.overview) updateOverviewChart(analyticsCache.overview);
+  if (analyticsCache.weekday) updateWeekdayChart(analyticsCache.weekday);
+  if (analyticsCache.dashboard) updateDoughnut(analyticsCache.dashboard);
+
+  analyticsChartsReady = true;
 }
-function updateCharts(data) {
-  const daysInMonth = new Date(data.month + '-01');
-  const numDays = new Date(daysInMonth.getFullYear(), daysInMonth.getMonth() + 1, 0).getDate();
-  const labels = Array.from({ length: numDays }, (_, i) => (i + 1).toString());
-  let runningBalance = 0;
-  const balanceData = Array(numDays).fill(null);
-  const incomeData = Array(numDays).fill(0);
-  const expenseData = Array(numDays).fill(0);
-  (data.daily_series || []).forEach(item => {
-    const day = parseInt(item.date.split('-')[2]) - 1;
-    if (day >= 0 && day < numDays) {
-      if (item.income) incomeData[day] = item.income;
-      if (item.expense) expenseData[day] = item.expense;
-    }
-  });
-  for (let i = 0; i < numDays; i++) {
-    runningBalance += (incomeData[i] || 0) - (expenseData[i] || 0);
-    balanceData[i] = runningBalance;
-  }
-  chartBar.data.labels = labels;
-  chartBar.data.datasets = [{ data: balanceData, backgroundColor: '#0A84FF', borderRadius: 4 }];
-  chartBar.update();
-  const cats = data.category_series || [];
+
+function updateDoughnut(data) {
+  if (!chartDoughnut) return;
+  const cats = (data.category_series || []);
+  if (!cats.length) { chartDoughnut.data.labels = []; chartDoughnut.data.datasets[0].data = []; chartDoughnut.data.datasets[0].backgroundColor = []; chartDoughnut.update(); return; }
   chartDoughnut.data.labels = cats.map(c => c.name);
   chartDoughnut.data.datasets[0].data = cats.map(c => c.total);
   chartDoughnut.data.datasets[0].backgroundColor = cats.map(c => c.color);
   chartDoughnut.update();
+}
+
+function updateOverviewChart(data) {
+  if (!data || !data.length) return;
+  chartOverview.data.labels = data.map(d => d.label);
+  chartOverview.data.datasets = [
+    { data: data.map(d => d.income), backgroundColor: '#30D158', borderRadius: 3, label: 'Ingresos' },
+    { data: data.map(d => d.expense), backgroundColor: '#FF453A', borderRadius: 3, label: 'Gastos' },
+  ];
+  chartOverview.update();
+}
+
+function updateWeekdayChart(data) {
+  if (!data || !data.length) return;
+  chartWeekday.data.labels = data.map(d => d.label);
+  chartWeekday.data.datasets = [{ data: data.map(d => d.total), backgroundColor: data.map(d => d.total > 0 ? '#FF4530' : 'rgba(255,69,48,0.2)'), borderRadius: 3 }];
+  chartWeekday.update();
+}
+
+function renderKPIs(data) {
+  const kpi = data.kpi;
+  if (!kpi) return;
+  const grid = document.getElementById('kpi-grid');
+  grid.innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Gasto diario promedio</div>
+      <div class="kpi-val" style="color:var(--orange)">${ui.formatMoney(kpi.avg_daily_expense)}</div>
+      <div class="kpi-sub">${kpi.days_without_expenses} días sin gastos</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Categoría más cara</div>
+      <div class="kpi-val" style="color:${kpi.top_expense_category?.color || 'var(--secondary)'}">${kpi.top_expense_category ? ui.formatMoney(kpi.top_expense_category.amount) : 'N/A'}</div>
+      <div class="kpi-sub">${kpi.top_expense_category?.name || 'Sin datos'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Mayor gasto del día</div>
+      <div class="kpi-val" style="color:var(--red)">${kpi.biggest_spending_day ? ui.formatMoney(kpi.biggest_spending_day.total) : 'N/A'}</div>
+      <div class="kpi-sub">${kpi.biggest_spending_day ? new Date(kpi.biggest_spending_day.date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long' }) : 'Sin datos'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Transacción más grande</div>
+      <div class="kpi-val" style="color:var(--red)">${kpi.biggest_transaction ? ui.formatMoney(kpi.biggest_transaction.amount) : 'N/A'}</div>
+      <div class="kpi-sub">${kpi.biggest_transaction?.note || kpi.biggest_transaction?.category?.name || ''}</div>
+    </div>
+  `;
+}
+
+function renderTopTransactions(data) {
+  const container = document.getElementById('top-transactions-container');
+  if (!data) { container.innerHTML = ''; return; }
+  const hasIncome = data.top_income?.length;
+  const hasExpense = data.top_expense?.length;
+  if (!hasIncome && !hasExpense) { container.innerHTML = '<div class="empty-state" style="margin-top:0">Sin transacciones este mes</div>'; return; }
+
+  const renderList = (title, items, isExpense) => `
+    <div style="margin-bottom:${isExpense ? 0 : '16px'}">
+      <div style="font-size:14px;font-weight:600;color:${isExpense ? 'var(--red)' : 'var(--green)'};margin-bottom:10px">${title}</div>
+      ${items.map(t => {
+        const color = t.category?.color_hex || (isExpense ? 'var(--red)' : 'var(--green)');
+        const icon = t.category?.icon || 'circle';
+        return `
+          <div class="top-tx-card">
+            <div class="tx-icon" style="color:${color};background:${color}22">${getCategoryIcon(icon, color)}</div>
+            <div class="tx-info">
+              <div class="tx-n">${t.note || t.category?.name || 'Sin descripción'}</div>
+              <div class="tx-d">${new Date(t.date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}${t.category ? ' • ' + t.category.name : ''}</div>
+            </div>
+            <div class="tx-amt" style="color:${isExpense ? 'var(--red)' : 'var(--green)'}">${isExpense ? '-' : '+'}${ui.formatMoney(t.amount)}</div>
+          </div>`;
+      }).join('')}
+    </div>`;
+
+  container.innerHTML = (hasExpense ? renderList('Mayores gastos', data.top_expense, true) : '')
+    + (hasIncome ? renderList('Mayores ingresos', data.top_income, false) : '');
 }
 
 // ===== APP =====
@@ -841,6 +990,7 @@ const app = {
     document.getElementById('tx-date').max = today;
     this.updateMonthLabels();
     await this.loadData();
+    await this.loadAnalyticsData();
     await cash.loadHistory();
   },
   async loadData() {
@@ -855,9 +1005,28 @@ const app = {
       this.renderCategoriesSelect();
       this.renderSummary(dashboard);
       this.renderCategoryList(dashboard);
-      updateCharts({ ...dashboard, month: this.month });
+      analyticsCache.dashboard = dashboard;
+      if (analyticsChartsReady) updateDoughnut(dashboard);
+      renderKPIs(dashboard);
       await this.loadTransactions(true);
     } catch (e) { ui.toast('Error al cargar: ' + e.message); }
+  },
+  async loadAnalyticsData() {
+    try {
+      const [overview, topTransactions, weekday] = await Promise.all([
+        api.get('/api/analytics/overview?months=6'),
+        api.get(`/api/analytics/top-transactions?month=${this.month}`),
+        api.get(`/api/analytics/weekday?month=${this.month}`),
+      ]);
+      analyticsCache.overview = overview;
+      analyticsCache.top = topTransactions;
+      analyticsCache.weekday = weekday;
+      renderTopTransactions(topTransactions);
+      if (analyticsChartsReady) {
+        updateOverviewChart(overview);
+        updateWeekdayChart(weekday);
+      }
+    } catch (e) { ui.toast('Error al cargar análisis: ' + e.message); }
   },
   async loadTransactions(reset = false) {
     if (this.loadingMore) return;
@@ -898,6 +1067,7 @@ const app = {
     this.month = newDate.toISOString().slice(0, 7);
     this.updateMonthLabels();
     this.loadData();
+    this.loadAnalyticsData();
   },
   async deleteTransaction(id) {
     try {

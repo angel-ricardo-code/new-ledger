@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ReconciliationController;
@@ -20,3 +21,7 @@ Route::get('/dashboard', [DashboardController::class, 'index']);
 
 Route::post('/reconciliation', [ReconciliationController::class, 'store']);
 Route::get('/reconciliation', [ReconciliationController::class, 'index']);
+
+Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
+Route::get('/analytics/top-transactions', [AnalyticsController::class, 'topTransactions']);
+Route::get('/analytics/weekday', [AnalyticsController::class, 'weekday']);

@@ -66,6 +66,23 @@ class DashboardController extends Controller
             ->latest('date')
             ->first();
 
+        // KPI data
+        $daysInMonth = (int) now()->format('j');
+        $expenseDays = $transactions->where('type', 'expense')
+            ->groupBy(fn($t) => $t->date->format('Y-m-d'))
+            ->count();
+        $avgDailyExpense = $daysInMonth > 0 ? $expenseTotal / $daysInMonth : 0;
+
+        $topExpenseCat = $categorySeries->sortByDesc('total')->first();
+
+        $biggestDay = $dailySeries->filter(fn($d) => ($d['expense'] ?? 0) > 0)
+            ->sortByDesc(fn($d) => $d['expense'] ?? 0)
+            ->first();
+
+        $biggestTx = $transactions->where('type', 'expense')
+            ->sortByDesc('amount')
+            ->first();
+
         return response()->json([
             'balance' => $balance,
             'income_total' => $incomeTotal,
@@ -79,6 +96,31 @@ class DashboardController extends Controller
             'daily_series' => $dailySeries,
             'category_series' => $categorySeries,
             'vs_previous' => $balance - $prevBalance,
+            'kpi' => [
+                'avg_daily_expense' => round($avgDailyExpense, 2),
+                'top_expense_category' => $topExpenseCat ? [
+                    'name' => $topExpenseCat['name'],
+                    'amount' => $topExpenseCat['total'],
+                    'color' => $topExpenseCat['color'],
+                    'icon' => $topExpenseCat['icon'],
+                ] : null,
+                'biggest_spending_day' => $biggestDay ? [
+                    'date' => $biggestDay['date'],
+                    'total' => $biggestDay['expense'],
+                ] : null,
+                'biggest_transaction' => $biggestTx ? [
+                    'amount' => (float) $biggestTx->amount,
+                    'note' => $biggestTx->note,
+                    'date' => $biggestTx->date->format('Y-m-d'),
+                    'category' => $biggestTx->category ? [
+                        'name' => $biggestTx->category->name,
+                        'color_hex' => $biggestTx->category->color_hex,
+                        'icon' => $biggestTx->category->icon,
+                    ] : null,
+                ] : null,
+                'days_without_expenses' => max(0, $daysInMonth - $expenseDays),
+                'days_in_month' => $daysInMonth,
+            ],
         ]);
     }
 }
