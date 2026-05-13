@@ -25,7 +25,8 @@ class DashboardController extends Controller
         $totals = $transactions->groupBy('type')->map(fn($g) => $g->sum('amount'));
         $incomeTotal = $totals->get('income', 0);
         $expenseTotal = $totals->get('expense', 0);
-        $balance = $incomeTotal - $expenseTotal;
+        $reconciliationTotal = $totals->get('reconciliation', 0);
+        $balance = $incomeTotal - $expenseTotal + $reconciliationTotal;
 
         $dailySeries = $transactions->groupBy(fn($t) => $t->date->format('Y-m-d'))
             ->map(function ($items, $date) {
@@ -55,14 +56,26 @@ class DashboardController extends Controller
         $prevStart = "{$prevMonth}-01";
         $prevEnd = date('Y-m-t', strtotime($prevStart));
         $prevTx = Transaction::whereBetween('date', [$prevStart, $prevEnd])->get();
-        $prevIncome = $prevTx->where('type', 'income')->sum('amount');
-        $prevExpense = $prevTx->where('type', 'expense')->sum('amount');
-        $prevBalance = $prevIncome - $prevExpense;
+        $prevTotals = $prevTx->groupBy('type')->map(fn($g) => $g->sum('amount'));
+        $prevIncome = $prevTotals->get('income', 0);
+        $prevExpense = $prevTotals->get('expense', 0);
+        $prevReconciliation = $prevTotals->get('reconciliation', 0);
+        $prevBalance = $prevIncome - $prevExpense + $prevReconciliation;
+
+        $lastRecon = Transaction::where('type', 'reconciliation')
+            ->latest('date')
+            ->first();
 
         return response()->json([
             'balance' => $balance,
             'income_total' => $incomeTotal,
             'expense_total' => $expenseTotal,
+            'reconciliation_total' => $reconciliationTotal,
+            'last_reconciliation' => $lastRecon ? [
+                'date' => $lastRecon->date->format('Y-m-d'),
+                'amount' => (float) $lastRecon->amount,
+                'note' => $lastRecon->note,
+            ] : null,
             'daily_series' => $dailySeries,
             'category_series' => $categorySeries,
             'vs_previous' => $balance - $prevBalance,

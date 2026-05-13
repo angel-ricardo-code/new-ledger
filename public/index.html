@@ -304,6 +304,26 @@
     width: 22px;
     height: 22px;
   }
+
+  .recon-history {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .recon-row {
+    background: var(--surface); border-radius: 14px; padding: 14px 16px;
+    border: 1px solid var(--separator); display: flex; align-items: center; gap: 12px;
+  }
+  .recon-row .recon-icon {
+    width: 36px; height: 36px; border-radius: 10px; background: rgba(10,132,255,0.15);
+    display: flex; align-items: center; justify-content: center; color: var(--accent); flex-shrink: 0;
+  }
+  .recon-row .recon-icon svg { width: 18px; height: 18px; }
+  .recon-row .recon-info { flex: 1; min-width: 0; }
+  .recon-row .recon-date { font-size: 12px; color: var(--secondary); margin-bottom: 2px; }
+  .recon-row .recon-note { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .recon-row .recon-amount { font-size: 15px; font-weight: 700; text-align: right; }
+  .recon-row .recon-amount.surplus { color: var(--green); }
+  .recon-row .recon-amount.shortage { color: var(--red); }
+  .recon-row .recon-amount.exact { color: var(--secondary); }
 </style>
 </head>
 <body>
@@ -351,10 +371,16 @@
           </button>
         </div>
       </div>
-      <div class="segmented">
-        <div class="segment active" data-filter="all">Todos</div>
-        <div class="segment" data-filter="income">Ingresos</div>
-        <div class="segment" data-filter="expense">Gastos</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div class="segmented" style="flex:1;margin-bottom:0">
+          <div class="segment active" data-filter="all">Todos</div>
+          <div class="segment" data-filter="income">Ingresos</div>
+          <div class="segment" data-filter="expense">Gastos</div>
+        </div>
+        <button id="export-csv" style="background:var(--elevated);border:none;border-radius:8px;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 12px;font-family:inherit;font-size:13px;white-space:nowrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          CSV
+        </button>
       </div>
       <div class="timeline" id="timeline-container"></div>
     </div>
@@ -379,10 +405,54 @@
     <!-- CAJA -->
     <div class="page" id="page-cash">
       <div class="page-header"><h1>Caja Chica</h1></div>
-      <div class="denom-grid" id="denom-grid"></div>
-      <div class="cash-result">
-        <div style="font-size:13px;color:var(--secondary)">Total contado</div>
-        <div class="amount" id="cash-counted">$0.00</div>
+
+      <div class="apple-card" style="margin-bottom:20px;padding:20px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.55)">Balance del sistema</div>
+            <div style="font-size:22px;font-weight:700" id="cash-system-balance">$0.00</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:13px;color:rgba(255,255,255,0.55)">Última reconcil.</div>
+            <div style="font-size:14px;font-weight:500" id="cash-last-recon">Nunca</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12)">
+          <div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.55)">Total contado</div>
+            <div style="font-size:20px;font-weight:600" id="cash-counted">$0.00</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:13px;color:rgba(255,255,255,0.55)">Diferencia</div>
+            <div style="font-size:20px;font-weight:700" id="cash-diff">$0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-size:15px;font-weight:600">Denominaciones</span>
+          <button id="cash-reset" style="background:var(--elevated);border:none;border-radius:6px;color:var(--secondary);padding:6px 12px;font-family:inherit;font-size:12px;cursor:pointer">Limpiar</button>
+        </div>
+        <div class="denom-grid" id="denom-grid"></div>
+      </div>
+
+      <div class="cat-card">
+        <div style="width:100%">
+          <div class="form-group" style="margin-bottom:12px">
+            <label>Nota (opcional)</label>
+            <input type="text" id="recon-note" placeholder="Ej: Corte del día" style="width:100%;height:44px;padding:0 14px;background:var(--elevated);border:1px solid var(--separator);border-radius:12px;color:var(--text);font-size:15px;font-family:inherit;outline:none">
+          </div>
+          <button id="btn-reconcile" style="width:100%;height:48px;background:var(--accent);color:white;border:none;border-radius:12px;font-size:16px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Reconciliar
+          </button>
+        </div>
+      </div>
+
+      <div style="margin-top:20px">
+        <div class="section-title">Historial</div>
+        <div class="recon-history" id="recon-history"></div>
       </div>
     </div>
   </div>
@@ -542,6 +612,18 @@ const api = {
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     return res.json();
   },
+  async patch(url, data) {
+    const res = await fetch(url, { 
+      method: 'PATCH', 
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }, 
+      body: JSON.stringify(data) 
+    });
+    if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
+    return res.json();
+  },
   async del(url) {
     const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
@@ -587,8 +669,6 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 });
 
 document.getElementById('fab-btn').addEventListener('click', () => modals.open('modal-selector'));
-document.getElementById('sel-transaction').addEventListener('click', () => { modals.closeAll(); modals.open('modal-transaction'); });
-document.getElementById('sel-category').addEventListener('click', () => { modals.closeAll(); modals.open('modal-category'); });
 
 // Icon selector
 document.querySelectorAll('.icon-option').forEach(btn => {
@@ -612,7 +692,7 @@ document.querySelectorAll('.segment').forEach(seg => {
     document.querySelectorAll('.segment').forEach(s => s.classList.remove('active'));
     seg.classList.add('active');
     app.typeFilter = seg.dataset.filter;
-    app.renderTimeline();
+    app.loadTransactions(true);
   });
 });
 
@@ -620,12 +700,15 @@ document.querySelectorAll('.segment').forEach(seg => {
 const cash = {
   denominations: [1000, 500, 200, 100, 50, 20, 10, 5, 3, 1],
   total: 0,
+  systemBalance: 0,
   init() {
     const grid = document.getElementById('denom-grid');
     grid.innerHTML = this.denominations.map(d => `
       <div class="denom-item"><label>${d} CUP</label><input type="number" min="0" value="0" data-denom="${d}" class="denom-input"></div>
     `).join('');
     grid.querySelectorAll('.denom-input').forEach(inp => inp.addEventListener('input', () => this.calculate()));
+    document.getElementById('btn-reconcile').addEventListener('click', () => this.reconcile());
+    document.getElementById('cash-reset').addEventListener('click', () => this.reset());
   },
   calculate() {
     this.total = 0;
@@ -633,6 +716,74 @@ const cash = {
       this.total += parseFloat(inp.value || 0) * parseFloat(inp.dataset.denom);
     });
     document.getElementById('cash-counted').textContent = ui.formatMoney(this.total);
+    this.updateDiff();
+  },
+  updateDiff() {
+    const diff = this.total - this.systemBalance;
+    const el = document.getElementById('cash-diff');
+    el.textContent = (diff >= 0 ? '+' : '') + ui.formatMoney(Math.abs(diff));
+    el.style.color = diff === 0 ? 'var(--green)' : Math.abs(diff) < 0.01 ? 'var(--green)' : 'var(--orange)';
+  },
+  setBalance(balance) {
+    this.systemBalance = balance;
+    document.getElementById('cash-system-balance').textContent = ui.formatMoney(balance);
+    this.updateDiff();
+  },
+  setLastRecon(recon) {
+    const el = document.getElementById('cash-last-recon');
+    if (recon) {
+      const d = new Date(recon.date + 'T12:00:00');
+      el.textContent = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    } else {
+      el.textContent = 'Nunca';
+    }
+  },
+  async reconcile() {
+    if (this.total <= 0) { ui.toast('Cuenta el efectivo primero'); return; }
+    const note = document.getElementById('recon-note').value.trim();
+    if (!confirm('¿Registrar reconciliación por ' + ui.formatMoney(this.total) + '?')) return;
+    try {
+      document.getElementById('btn-reconcile').disabled = true;
+      document.getElementById('btn-reconcile').style.opacity = '0.5';
+      await api.post('/api/reconciliation', { counted: this.total, note });
+      ui.toast('Reconciliación registrada');
+      document.getElementById('recon-note').value = '';
+      await app.loadData();
+      await this.loadHistory();
+    } catch (e) { ui.toast('Error: ' + e.message); }
+    finally {
+      document.getElementById('btn-reconcile').disabled = false;
+      document.getElementById('btn-reconcile').style.opacity = '1';
+    }
+  },
+  async loadHistory() {
+    try {
+      const response = await api.get('/api/reconciliation');
+      const container = document.getElementById('recon-history');
+      const items = response.data || [];
+      if (!items.length) {
+        container.innerHTML = '<div class="empty-state">Sin reconciliaciones registradas</div>';
+        return;
+      }
+      container.innerHTML = items.map(r => {
+        const isSurplus = r.amount >= 0;
+        const date = new Date(r.date + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        return `
+          <div class="recon-row">
+            <div class="recon-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div class="recon-info">
+              <div class="recon-date">${date}</div>
+              <div class="recon-note">${r.note ? r.note.replace('Reconciliación', '').replace(/^:?\s*/, '') : 'Sin detalle'}</div>
+            </div>
+            <div class="recon-amount ${isSurplus ? 'surplus' : 'shortage'}">${isSurplus ? '+' : ''}${ui.formatMoney(Math.abs(r.amount))}</div>
+          </div>`;
+      }).join('');
+    } catch (e) { /* silently fail */ }
+  },
+  reset() {
+    document.querySelectorAll('.denom-input').forEach(inp => inp.value = '0');
+    document.getElementById('recon-note').value = '';
+    this.calculate();
   }
 };
 
@@ -680,6 +831,8 @@ function updateCharts(data) {
 // ===== APP =====
 const app = {
   transactions: [], categories: [], month: '', typeFilter: 'all',
+  currentPage: 1, lastPage: 1, loadingMore: false,
+  editingTransactionId: null, editingCategoryId: null,
   async init() {
     this.month = new Date().toISOString().slice(0, 7);
     cash.init(); initCharts();
@@ -688,22 +841,45 @@ const app = {
     document.getElementById('tx-date').max = today;
     this.updateMonthLabels();
     await this.loadData();
+    await cash.loadHistory();
   },
   async loadData() {
     try {
-      const [categories, transactions, dashboard] = await Promise.all([
+      const [categories, dashboard] = await Promise.all([
         api.get('/api/categories'),
-        api.get(`/api/transactions?month=${this.month}&type=${this.typeFilter}`),
         api.get(`/api/dashboard?month=${this.month}`)
       ]);
       this.categories = categories;
-      this.transactions = transactions;
+      cash.setBalance(dashboard.balance);
+      cash.setLastRecon(dashboard.last_reconciliation);
       this.renderCategoriesSelect();
       this.renderSummary(dashboard);
       this.renderCategoryList(dashboard);
-      this.renderTimeline();
       updateCharts({ ...dashboard, month: this.month });
+      await this.loadTransactions(true);
     } catch (e) { ui.toast('Error al cargar: ' + e.message); }
+  },
+  async loadTransactions(reset = false) {
+    if (this.loadingMore) return;
+    if (reset) {
+      this.transactions = [];
+      this.currentPage = 1;
+      this.lastPage = 1;
+    }
+    if (this.currentPage > this.lastPage) return;
+    this.loadingMore = true;
+    try {
+      const response = await api.get(`/api/transactions?month=${this.month}&type=${this.typeFilter}&page=${this.currentPage}`);
+      this.transactions = this.transactions.concat(response.data);
+      this.lastPage = response.last_page;
+      this.currentPage = response.current_page + 1;
+      this.renderTimeline();
+    } catch (e) { ui.toast('Error al cargar transacciones: ' + e.message); }
+    finally { this.loadingMore = false; }
+  },
+  async loadMoreTransactions() {
+    if (this.currentPage > this.lastPage || this.loadingMore) return;
+    await this.loadTransactions(false);
   },
   updateMonthLabels() {
     const label = ui.formatMonthLabel(this.month);
@@ -726,8 +902,16 @@ const app = {
   async deleteTransaction(id) {
     try {
       await api.del(`/api/transactions/${id}`);
-      await this.loadData();
       ui.toast('Transacción eliminada');
+      await this.loadData();
+    } catch (e) { ui.toast('Error: ' + e.message); }
+  },
+  async deleteCategory(id) {
+    if (!confirm('¿Eliminar esta categoría? Las transacciones asociadas quedarán sin categoría.')) return;
+    try {
+      await api.del(`/api/categories/${id}`);
+      ui.toast('Categoría eliminada');
+      await this.loadData();
     } catch (e) { ui.toast('Error: ' + e.message); }
   },
   renderCategoriesSelect() {
@@ -747,7 +931,7 @@ const app = {
   },
   renderCategoryList(data) {
     const container = document.getElementById('category-list');
-    const cats = (data.category_series || []).slice(0, 3);
+    const cats = (data.category_series || []).slice(0, 5);
     if (!cats.length) { container.innerHTML = '<div class="empty-state">Sin categorías este mes</div>'; return; }
     const maxVal = Math.max(...cats.map(c => c.total), 1);
     container.innerHTML = cats.map(c => `
@@ -755,6 +939,12 @@ const app = {
         <div class="cat-icon" style="background:${c.color}33;color:${c.color}">${getCategoryIcon(c.icon, c.color)}</div>
         <div class="cat-info"><div class="cat-name">${c.name}</div><div class="cat-bar"><div class="cat-bar-fill" style="width:${(c.total/maxVal*100)}%;background:${c.color}"></div></div></div>
         <div class="cat-amount" style="color:${c.color}">${ui.formatMoney(c.total)}</div>
+        <button class="cat-edit" data-id="${c.category_id}" style="background:none;border:none;color:var(--secondary);cursor:pointer;padding:6px;margin-left:4px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </button>
+        <button class="cat-delete" data-id="${c.category_id}" style="background:none;border:none;color:var(--red);cursor:pointer;padding:6px;opacity:0.6">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
       </div>
     `).join('');
   },
@@ -776,7 +966,11 @@ const app = {
         total: 0 
       };
       acc[day].categories[cid].total += parseFloat(tx.amount);
-      if (tx.type === 'income') acc[day].totalIncome += tx.amount; else acc[day].totalExpense += tx.amount;
+      if (tx.type === 'income' || (tx.type === 'reconciliation' && parseFloat(tx.amount) >= 0)) {
+        acc[day].totalIncome += parseFloat(tx.amount);
+      } else {
+        acc[day].totalExpense += Math.abs(parseFloat(tx.amount));
+      }
       return acc;
     }, {});
     const days = Object.values(grouped).sort((a, b) => b.date.localeCompare(a.date));
@@ -803,11 +997,30 @@ const app = {
         </div>
         <div class="day-cats">${cats.map(c => `<div class="day-cat"><div class="cat-dot" style="background:${c.color}"></div><div class="cat-lbl">${c.name}</div><div class="cat-val">${c.total >= 0 ? '+' : ''}${ui.formatMoney(c.total)}</div></div>`).join('')}</div>
         <div class="day-tx">
-          ${d.transactions.map(t => `
+          ${d.transactions.map(t => {
+            const isRecon = t.type === 'reconciliation';
+            if (isRecon) {
+              const reconSurplus = t.amount >= 0;
+              return `
+            <div class="tx-row" data-id="${t.id}" style="display:flex;align-items:center">
+              <div class="tx-icon" style="color:var(--accent);background:rgba(10,132,255,0.15)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              </div>
+              <div class="tx-info"><div class="tx-name">${reconSurplus ? 'Ajuste por sobrante' : 'Ajuste por faltante'}</div><div class="tx-time">Reconciliación • ${new Date(t.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div></div>
+              <div class="tx-amount ${reconSurplus ? 'income' : 'expense'}" style="margin-left:8px">${reconSurplus ? '+' : '-'}${ui.formatMoney(Math.abs(t.amount))}</div>
+              <button class="tx-delete" data-id="${t.id}" style="background:none;border:none;color:var(--red);cursor:pointer;padding:8px;opacity:0.6;margin-left:4px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>`;
+            }
+            return `
             <div class="tx-row" data-id="${t.id}" style="display:flex;align-items:center">
               <div class="tx-icon" style="color:${t.category?.color_hex || 'var(--secondary)'}">${getCategoryIcon(t.category?.icon || 'circle', t.category?.color_hex || 'var(--secondary)')}</div>
               <div class="tx-info"><div class="tx-name">${t.note || 'Sin descripción'}</div><div class="tx-time">${t.category?.name || 'Sin categoría'} • ${new Date(t.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div></div>
               <div class="tx-amount ${t.type}" style="margin-left:8px">${t.type === 'expense' ? '-' : '+'}${ui.formatMoney(t.amount)}</div>
+              <button class="tx-edit" data-id="${t.id}" style="background:none;border:none;color:var(--secondary);cursor:pointer;padding:8px;opacity:0.6;margin-left:4px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
               <button class="tx-delete" data-id="${t.id}" style="background:none;border:none;color:var(--red);cursor:pointer;padding:8px;opacity:0.6;margin-left:4px">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
@@ -830,15 +1043,85 @@ document.getElementById('next-month-tx').addEventListener('click', () => app.cha
 document.getElementById('prev-month-analytics').addEventListener('click', () => app.changeMonth(-1));
 document.getElementById('next-month-analytics').addEventListener('click', () => app.changeMonth(1));
 
-// Delete transaction
+// Delete/Edit transaction (delegation)
 document.getElementById('timeline-container').addEventListener('click', async (e) => {
-  const btn = e.target.closest('.tx-delete');
-  if (btn) {
-    const id = btn.dataset.id;
+  const delBtn = e.target.closest('.tx-delete');
+  if (delBtn) {
+    const id = delBtn.dataset.id;
     if (confirm('¿Eliminar esta transacción?')) {
       await app.deleteTransaction(id);
     }
+    return;
   }
+  const editBtn = e.target.closest('.tx-edit');
+  if (editBtn) {
+    const id = editBtn.dataset.id;
+    const tx = app.transactions.find(t => t.id == id);
+    if (!tx) return;
+    app.editingTransactionId = id;
+    document.getElementById('modal-transaction').querySelector('.modal-title').textContent = 'Editar Transacción';
+    document.getElementById('btn-add-transaction').textContent = 'Guardar';
+    document.getElementById('tx-date').value = tx.date.split('T')[0];
+    document.getElementById('tx-type').value = tx.type;
+    document.getElementById('tx-amount').value = tx.amount;
+    document.getElementById('tx-note').value = tx.note || '';
+    app.renderCategoriesSelect();
+    document.getElementById('tx-category').value = tx.category_id || '';
+    modals.closeAll();
+    modals.open('modal-transaction');
+  }
+});
+
+// Edit/Delete category (delegation)
+document.getElementById('category-list').addEventListener('click', async (e) => {
+  const editBtn = e.target.closest('.cat-edit');
+  if (editBtn) {
+    const id = editBtn.dataset.id;
+    const cat = app.categories.find(c => c.id == id);
+    if (!cat) return;
+    app.editingCategoryId = id;
+    document.getElementById('modal-category').querySelector('.modal-title').textContent = 'Editar Categoría';
+    document.getElementById('btn-add-category').textContent = 'Guardar';
+    document.getElementById('cat-name').value = cat.name;
+    document.getElementById('cat-color').value = cat.color_hex;
+    document.getElementById('cat-type').value = cat.type;
+    document.querySelectorAll('.icon-option').forEach(b => {
+      b.classList.toggle('selected', b.dataset.icon === (cat.icon || 'circle'));
+    });
+    modals.closeAll();
+    modals.open('modal-category');
+    return;
+  }
+  const delBtn = e.target.closest('.cat-delete');
+  if (delBtn) {
+    await app.deleteCategory(delBtn.dataset.id);
+  }
+});
+
+// Reset modal title when opening selector
+document.getElementById('sel-transaction').addEventListener('click', () => {
+  modals.closeAll();
+  app.editingTransactionId = null;
+  document.getElementById('modal-transaction').querySelector('.modal-title').textContent = 'Nueva Transacción';
+  document.getElementById('btn-add-transaction').textContent = 'Agregar';
+  document.getElementById('tx-amount').value = '';
+  document.getElementById('tx-note').value = '';
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('tx-date').value = today;
+  document.getElementById('tx-type').value = 'expense';
+  modals.open('modal-transaction');
+});
+document.getElementById('sel-category').addEventListener('click', () => {
+  modals.closeAll();
+  app.editingCategoryId = null;
+  document.getElementById('modal-category').querySelector('.modal-title').textContent = 'Nueva Categoría';
+  document.getElementById('btn-add-category').textContent = 'Agregar';
+  document.getElementById('cat-name').value = '';
+  document.getElementById('cat-color').value = '#0A84FF';
+  document.getElementById('cat-type').value = 'expense';
+  document.querySelectorAll('.icon-option').forEach(b => b.classList.remove('selected'));
+  document.querySelector('[data-icon="utensils"]').classList.add('selected');
+  modals.open('modal-category');
 });
 
 document.getElementById('btn-add-transaction').addEventListener('click', async () => {
@@ -851,12 +1134,18 @@ document.getElementById('btn-add-transaction').addEventListener('click', async (
   };
   if (!data.date || !data.amount || data.amount <= 0) { ui.toast('Completa los campos requeridos'); return; }
   try {
-    await api.post('/api/transactions', data);
+    if (app.editingTransactionId) {
+      await api.patch(`/api/transactions/${app.editingTransactionId}`, data);
+      app.editingTransactionId = null;
+      ui.toast('Transacción actualizada');
+    } else {
+      await api.post('/api/transactions', data);
+      ui.toast('Transacción agregada');
+    }
     document.getElementById('tx-amount').value = '';
     document.getElementById('tx-note').value = '';
     await app.loadData();
     modals.closeAll();
-    ui.toast('Transacción agregada');
   } catch (e) { ui.toast('Error: ' + e.message); }
 });
 
@@ -870,12 +1159,35 @@ document.getElementById('btn-add-category').addEventListener('click', async () =
   };
   if (!data.name) { ui.toast('Ingresa un nombre'); return; }
   try {
-    await api.post('/api/categories', data);
+    if (app.editingCategoryId) {
+      await api.patch(`/api/categories/${app.editingCategoryId}`, data);
+      app.editingCategoryId = null;
+      ui.toast('Categoría actualizada');
+    } else {
+      await api.post('/api/categories', data);
+      ui.toast('Categoría agregada');
+    }
     document.getElementById('cat-name').value = '';
     await app.loadData();
     modals.closeAll();
-    ui.toast('Categoría agregada');
   } catch (e) { ui.toast('Error: ' + e.message); }
+});
+
+// Export CSV
+document.getElementById('export-csv').addEventListener('click', () => {
+  window.location.href = `/api/transactions?month=${app.month}&export=1`;
+});
+
+// Infinite scroll for transactions
+let scrollTimeout;
+document.querySelector('.content').addEventListener('scroll', () => {
+  clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    const el = document.querySelector('.content');
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 300) {
+      app.loadMoreTransactions();
+    }
+  }, 250);
 });
 
 document.addEventListener('DOMContentLoaded', () => app.init());

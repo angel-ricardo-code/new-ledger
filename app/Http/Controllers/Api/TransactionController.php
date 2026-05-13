@@ -7,10 +7,11 @@ use App\Http\Requests\StoreTransactionRequest;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class TransactionController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): Response|JsonResponse
     {
         $query = Transaction::with('category');
 
@@ -23,11 +24,10 @@ class TransactionController extends Controller
             $query->where('type', $request->type);
         }
 
-        $transactions = $query->orderBy('date', 'desc')
-            ->orderBy('id', 'desc')
-            ->get();
-
         if ($request->boolean('export')) {
+            $transactions = $query->orderBy('date', 'desc')
+                ->orderBy('id', 'desc')
+                ->get();
             $csv = "date,type,amount,category,note\n";
             foreach ($transactions as $t) {
                 $category = str_replace('"', '""', $t->category?->name ?? '');
@@ -48,6 +48,10 @@ class TransactionController extends Controller
                 'Content-Disposition' => "attachment; filename=ledger_export_{$month}.csv",
             ]);
         }
+
+        $transactions = $query->orderBy('date', 'desc')
+            ->orderBy('id', 'desc')
+            ->paginate(20);
 
         return response()->json($transactions);
     }

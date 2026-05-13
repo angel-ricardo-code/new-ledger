@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ReconciliationController;
 use App\Http\Controllers\Api\TransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -12,5 +13,10 @@ Route::delete('/transactions/{id}', [TransactionController::class, 'destroy']);
 
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::post('/categories', [CategoryController::class, 'store']);
+Route::patch('/categories/{id}', [CategoryController::class, 'update']);
+Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
 
 Route::get('/dashboard', [DashboardController::class, 'index']);
+
+Route::post('/reconciliation', [ReconciliationController::class, 'store']);
+Route::get('/reconciliation', [ReconciliationController::class, 'index']);
