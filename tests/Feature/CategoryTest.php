@@ -54,7 +54,7 @@ class CategoryTest extends TestCase
             ->assertJsonValidationErrors(['name', 'type', 'color_hex']);
     }
 
-    public function test_store_validates_unique_name(): void
+    public function test_store_allows_duplicate_name(): void
     {
         Category::factory()->create(['name' => 'Duplicate']);
 
@@ -64,8 +64,7 @@ class CategoryTest extends TestCase
             'color_hex' => '#FF3B30',
         ]);
 
-        $response->assertUnprocessable()
-            ->assertJsonValidationErrors(['name']);
+        $response->assertCreated();
     }
 
     public function test_store_validates_color_format(): void

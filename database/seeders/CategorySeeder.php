@@ -23,6 +23,8 @@ class CategorySeeder extends Seeder
                 ['name' => $category['name']],
                 [
                     ...$category,
+                    'user_id' => null,
+                    'created_at' => now(),
                     'updated_at' => now(),
                 ]
             );

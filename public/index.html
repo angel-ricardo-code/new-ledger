@@ -364,6 +364,91 @@
     border: 1px solid var(--separator);
   }
   .chart-card .chart-wrap { height: 180px; }
+
+  .skeleton { background: linear-gradient(90deg, var(--surface) 25%, var(--elevated) 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+  @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  .skeleton-block { height: 20px; margin-bottom: 10px; }
+  .skeleton-card { height: 80px; border-radius: 16px; margin-bottom: 10px; }
+  .skeleton-chart { height: 180px; border-radius: 16px; }
+  .skeleton-sm { height: 14px; width: 60%; margin-bottom: 8px; }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--elevated); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; margin: 40px auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast.error { background: #FF453A; color: white; }
+  .toast .toast-close { margin-left: 12px; cursor: pointer; opacity: 0.8; font-size: 18px; line-height: 1; padding: 0 4px; }
+
+  .tx-row { transition: transform .2s; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+  .day-cat-breakdown { border-top: 1px solid var(--separator); padding-top: 10px; margin-top: 10px; }
+  .day-cat-row { display: flex; align-items: center; padding: 4px 0; gap: 8px; font-size: 13px; }
+  .day-cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .day-cat-name { flex: 1; color: var(--secondary); }
+  .day-cat-total { font-weight: 600; }
+
+  input[type="search"]::-webkit-search-decoration,
+  input[type="search"]::-webkit-search-cancel-button { display: none; }
+  .search-wrap { position: relative; margin-bottom: 16px; }
+  .search-wrap input { width: 100%; height: 44px; padding: 0 14px 0 40px; background: var(--surface); border: 1px solid var(--separator); border-radius: 12px; color: var(--text); font-size: 15px; font-family: inherit; outline: none; }
+  .search-wrap input:focus { border-color: var(--accent); }
+  .search-wrap .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--secondary); pointer-events: none; width: 18px; height: 18px; }
+  .search-wrap .search-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: var(--elevated); border: none; border-radius: 50%; width: 24px; height: 24px; color: var(--secondary); cursor: pointer; display: none; align-items: center; justify-content: center; font-size: 14px; padding: 0; }
+  .search-wrap .search-clear.visible { display: flex; }
+
+  /* Auth pages */
+  .auth-page { display: none; min-height: 100vh; padding: 0 24px; flex-direction: column; justify-content: center; align-items: center; text-align: center; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .auth-page.active { display: flex; animation: fadeIn .3s ease; }
+  #page-welcome.auth-page { justify-content: flex-start; padding: 40px 24px 60px; }
+  .auth-card {
+    background: var(--surface); border: 1px solid var(--separator); border-radius: 24px;
+    padding: 32px 24px 28px; width: 100%; max-width: 380px; margin: 20px auto;
+  }
+  .auth-card .auth-logo { margin: 0 auto 20px; }
+  .auth-card h1 { font-size: 24px; margin-bottom: 4px; }
+  .auth-card .auth-form + p { font-size: 14px; margin-bottom: 24px; color: var(--secondary); }
+  .auth-page .auth-logo { width: 56px; height: 56px; border-radius: 16px; background: var(--accent); display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: white; }
+  .auth-page .auth-logo svg { width: 32px; height: 32px; }
+  .auth-page h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .auth-page p { color: var(--secondary); font-size: 15px; margin-bottom: 32px; max-width: 320px; line-height: 1.5; }
+  .auth-page .auth-form { width: 100%; max-width: 340px; }
+  .auth-page .auth-form .form-group { margin-bottom: 16px; text-align: left; }
+  .auth-page .auth-form .form-group label { font-size: 13px; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-weight: 500; display: block; }
+  .auth-page .auth-form .form-group input { width: 100%; height: 48px; padding: 0 14px; background: var(--surface); border: 1px solid var(--separator); border-radius: 12px; color: var(--text); font-size: 16px; font-family: inherit; outline: none; }
+  .auth-page .auth-form .form-group input:focus { border-color: var(--accent); }
+  .auth-page .auth-form .btn-primary { width: 100%; height: 50px; background: var(--accent); color: white; border: none; border-radius: 12px; font-size: 17px; font-weight: 600; font-family: inherit; cursor: pointer; margin-top: 8px; }
+  .auth-page .auth-form .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .auth-page .auth-link { margin-top: 20px; font-size: 14px; color: var(--secondary); }
+  .auth-page .auth-link a { color: var(--accent); text-decoration: none; cursor: pointer; font-weight: 500; }
+  .auth-page .auth-link a { color: var(--accent); text-decoration: none; cursor: pointer; font-weight: 500; }
+  .auth-page .auth-error { color: var(--red); font-size: 14px; margin-bottom: 16px; display: none; }
+  .auth-page .auth-error.visible { display: block; }
+  .auth-page .auth-checkbox { display: flex; align-items: center; gap: 8px; margin: 8px 0; font-size: 13px; color: var(--secondary); text-align: left; }
+  .auth-page .auth-checkbox .check { width: 18px; height: 18px; border-radius: 4px; border: 1px solid var(--separator); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; transition: all .2s; }
+  .auth-page .auth-checkbox .check.pass { background: var(--green); border-color: var(--green); color: white; }
+
+  .strength-bar { height: 4px; border-radius: 2px; background: var(--elevated); margin-top: 8px; overflow: hidden; }
+  .strength-bar-fill { height: 100%; border-radius: 2px; transition: all .3s; width: 0; }
+  .strength-label { font-size: 11px; color: var(--secondary); margin-top: 4px; text-align: right; }
+
+  #splash {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  #splash.hidden { opacity: 0; pointer-events: none; transition: opacity .3s; }
+  .welcome-hero { padding: 40px 0 20px; text-align: center; }
+  .welcome-hero h1 { font-size: 36px; font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+  .welcome-hero p { font-size: 16px; color: var(--secondary); max-width: 400px; margin: 0 auto 32px; line-height: 1.6; }
+  .welcome-hero .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .welcome-hero .btn-row button { height: 50px; border-radius: 14px; font-size: 16px; font-weight: 600; font-family: inherit; cursor: pointer; padding: 0 32px; border: none; }
+  .welcome-hero .btn-row .btn-primary { background: var(--accent); color: white; }
+  .welcome-hero .btn-row .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--separator); }
+  .feature-grid { display: grid; gap: 16px; margin-top: 32px; padding-bottom: 40px; }
+  @media (min-width: 600px) { .feature-grid { grid-template-columns: 1fr 1fr; } }
+  .feature-card { background: var(--surface); border-radius: 20px; padding: 24px; border: 1px solid var(--separator); text-align: left; }
+  .feature-card .fc-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+  .feature-card .fc-icon svg { width: 22px; height: 22px; }
+  .feature-card h3 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+  .feature-card p { font-size: 13px; color: var(--secondary); line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -383,19 +468,28 @@
           </button>
         </div>
       </div>
-      <div class="apple-card">
-        <div class="ac-label">Balance Total</div>
-        <div class="ac-balance" id="balance-total">$0.00</div>
-        <div class="ac-row">
-          <div class="ac-stat"><div class="val" style="color:var(--green)" id="income-display">$0</div><div class="lbl">Ingresos</div></div>
-          <div class="ac-divider"></div>
-          <div class="ac-stat"><div class="val" style="color:var(--red)" id="expense-display">$0</div><div class="lbl">Gastos</div></div>
-          <div class="ac-divider"></div>
-          <div class="ac-stat"><div class="val" id="vs-display">$0</div><div class="lbl">vs mes ant.</div></div>
-        </div>
+      <div class="loading-skeleton" id="loading-home">
+        <div class="skeleton skeleton-card" style="height:180px;margin-bottom:20px"></div>
+        <div class="skeleton skeleton-block" style="width:40%"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
       </div>
-      <div class="section-title">Top Categorías</div>
-      <div id="category-list"></div>
+      <div class="page-content" id="content-home" style="display:none">
+        <div class="apple-card">
+          <div class="ac-label">Balance Total</div>
+          <div class="ac-balance" id="balance-total">$0.00</div>
+          <div class="ac-row">
+            <div class="ac-stat"><div class="val" style="color:var(--green)" id="income-display">$0</div><div class="lbl">Ingresos</div></div>
+            <div class="ac-divider"></div>
+            <div class="ac-stat"><div class="val" style="color:var(--red)" id="expense-display">$0</div><div class="lbl">Gastos</div></div>
+            <div class="ac-divider"></div>
+            <div class="ac-stat"><div class="val" id="vs-display">$0</div><div class="lbl">vs mes ant.</div></div>
+          </div>
+        </div>
+        <div class="section-title">Top Categorías</div>
+        <div id="category-list"></div>
+      </div>
     </div>
 
     <!-- MOVIMIENTOS -->
@@ -411,6 +505,11 @@
           </button>
         </div>
       </div>
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="search" id="search-tx" placeholder="Buscar transacciones..." autocomplete="off">
+        <button class="search-clear" id="search-clear">✕</button>
+      </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <div class="segmented" style="flex:1;margin-bottom:0">
           <div class="segment active" data-filter="all">Todos</div>
@@ -422,7 +521,15 @@
           CSV
         </button>
       </div>
-      <div class="timeline" id="timeline-container"></div>
+      <div class="loading-skeleton" id="loading-tx" style="display:none">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+      <div id="content-tx">
+        <div class="timeline" id="timeline-container"></div>
+      </div>
     </div>
 
     <!-- ANÁLISIS -->
@@ -439,7 +546,18 @@
         </div>
       </div>
 
-      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="loading-skeleton" id="loading-analytics">
+        <div class="skeleton" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;height:60px"></div>
+        <div class="skeleton skeleton-block" style="width:40%"></div>
+        <div class="skeleton skeleton-chart" style="margin-bottom:20px"></div>
+        <div class="skeleton skeleton-block" style="width:40%"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+          <div class="skeleton skeleton-chart"></div>
+          <div class="skeleton skeleton-chart"></div>
+        </div>
+      </div>
+      <div class="page-content" id="content-analytics" style="display:none">
+        <div class="kpi-grid" id="kpi-grid"></div>
 
       <div class="section-title">Comparativa mensual</div>
       <div class="chart-grid">
@@ -460,11 +578,34 @@
           <div class="chart-wrap" style="max-width:260px;margin:0 auto"><canvas id="chartDoughnut"></canvas></div>
         </div>
       </div>
+      </div>
     </div>
 
     <!-- CAJA -->
     <div class="page" id="page-cash">
-      <div class="page-header"><h1>Caja Chica</h1></div>
+      <div class="page-header"><h1>Caja Chica</h1>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+        <select id="currency-select" style="background:var(--elevated);border:1px solid var(--separator);border-radius:8px;color:var(--text);padding:6px 10px;font-family:inherit;font-size:13px;outline:none">
+          <option value="CUP">CUP</option>
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+          <option value="MXN">MXN</option>
+        </select>
+      </div>
+      </div>
+
+      <div class="loading-skeleton" id="loading-cash" style="display:none">
+        <div class="skeleton skeleton-card" style="height:120px;margin-bottom:20px"></div>
+        <div class="skeleton skeleton-block" style="width:30%"></div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
+          <div class="skeleton" style="height:56px;border-radius:12px"></div>
+          <div class="skeleton" style="height:56px;border-radius:12px"></div>
+          <div class="skeleton" style="height:56px;border-radius:12px"></div>
+          <div class="skeleton" style="height:56px;border-radius:12px"></div>
+          <div class="skeleton" style="height:56px;border-radius:12px"></div>
+        </div>
+      </div>
+      <div class="page-content" id="content-cash" style="display:none">
 
       <div class="apple-card" style="margin-bottom:20px;padding:20px">
         <div style="display:flex;justify-content:space-between;margin-bottom:12px">
@@ -514,6 +655,108 @@
         <div class="section-title">Historial</div>
         <div class="recon-history" id="recon-history"></div>
       </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SPLASH ===== -->
+  <div id="splash">
+    <div class="spinner"></div>
+    <div style="margin-top:16px;font-size:15px;color:var(--secondary);font-weight:500">Ledger</div>
+  </div>
+
+  <!-- ===== AUTH PAGES ===== -->
+  <!-- Welcome -->
+  <div class="auth-page active" id="page-welcome">
+    <div class="welcome-hero">
+      <div class="auth-logo" style="margin:0 auto 24px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+      </div>
+      <h1>Ledger</h1>
+      <p>Controla tus finanzas personales de forma simple y visual. Registra ingresos, gastos y mantén el control de tu dinero.</p>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="auth.showLogin()">Iniciar sesión</button>
+        <button class="btn-outline" onclick="auth.showRegister()">Crear cuenta</button>
+      </div>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="fc-icon" style="background:rgba(48,209,88,0.15);color:var(--green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></div>
+        <h3>Dashboard mensual</h3>
+        <p>Visualiza tus ingresos, gastos y balance de cada mes con gráficos interactivos.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon" style="background:rgba(10,132,255,0.15);color:var(--accent)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg></div>
+        <h3>Registro de transacciones</h3>
+        <p>Agrega, edita y organiza tus movimientos por categorías con notas personalizadas.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon" style="background:rgba(255,159,10,0.15);color:var(--orange)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>
+        <h3>Análisis y gráficos</h3>
+        <p>Comparativas mensuales, top transacciones y desglose por categoría y día de la semana.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon" style="background:rgba(191,90,242,0.15);color:var(--purple)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01"/><path d="M6 14h.01"/></svg></div>
+        <h3>Reconciliación de caja</h3>
+        <p>Cuenta efectivo físico y reconcilia con el balance del sistema automáticamente.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon" style="background:rgba(90,200,250,0.15);color:#5AC8FA"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
+        <h3>Exportación CSV</h3>
+        <p>Descarga tus transacciones en formato CSV para llevar tu contabilidad a otro nivel.</p>
+      </div>
+      <div class="feature-card">
+        <div class="fc-icon" style="background:rgba(255,69,58,0.15);color:var(--red)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/></svg></div>
+        <h3>Categorías personalizadas</h3>
+        <p>Crea tus propias categorías con colores e íconos para clasificar cada transacción.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Login -->
+  <div class="auth-page" id="page-login">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+      </div>
+      <h1>Iniciar sesión</h1>
+      <p style="font-size:14px;color:var(--secondary);margin-bottom:24px">Ingresa tu usuario y contraseña</p>
+      <div class="auth-form">
+        <div class="auth-error" id="login-error"></div>
+        <div class="form-group"><label>Usuario</label><input type="text" id="login-username" autocomplete="username"></div>
+        <div class="form-group"><label>Contraseña</label><input type="password" id="login-password" autocomplete="current-password"></div>
+        <button class="btn-primary" id="btn-login" onclick="auth.login()">Entrar</button>
+      </div>
+      <div class="auth-link">¿No tienes cuenta? <a onclick="auth.showRegister()">Regístrate</a></div>
+    </div>
+  </div>
+
+  <!-- Register -->
+  <div class="auth-page" id="page-register">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+      </div>
+      <h1>Crear cuenta</h1>
+      <p style="font-size:14px;color:var(--secondary);margin-bottom:24px">Regístrate para controlar tus finanzas</p>
+    <div class="auth-form">
+      <div class="auth-error" id="register-error"></div>
+      <div class="form-group"><label>Usuario</label><input type="text" id="reg-username" autocomplete="username" minlength="3"></div>
+      <div class="form-group"><label>Correo (opcional)</label><input type="email" id="reg-email" autocomplete="email"></div>
+      <div class="form-group"><label>Contraseña</label><input type="password" id="reg-password" autocomplete="new-password"></div>
+      <div class="strength-bar"><div class="strength-bar-fill" id="strength-fill"></div></div>
+      <div class="strength-label" id="strength-label"></div>
+      <div style="margin-top:12px">
+        <div class="auth-checkbox"><span class="check" id="check-length">✕</span> 8+ caracteres</div>
+        <div class="auth-checkbox"><span class="check" id="check-upper">✕</span> Una mayúscula</div>
+        <div class="auth-checkbox"><span class="check" id="check-lower">✕</span> Una minúscula</div>
+        <div class="auth-checkbox"><span class="check" id="check-number">✕</span> Un número</div>
+        <div class="auth-checkbox"><span class="check" id="check-special">✕</span> Un carácter especial</div>
+      </div>
+      <div class="form-group" style="margin-top:16px"><label>Confirmar contraseña</label><input type="password" id="reg-password-confirm" autocomplete="new-password"></div>
+      <button class="btn-primary" id="btn-register" onclick="auth.register()">Crear cuenta</button>
+    </div>
+    <div class="auth-link">¿Ya tienes cuenta? <a onclick="auth.showLogin()">Inicia sesión</a></div>
     </div>
   </div>
 
@@ -535,6 +778,9 @@
     </button>
     <button class="tab-btn" data-target="page-cash">
       <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01"/><path d="M6 14h.01"/></svg></span>Caja
+    </button>
+    <button class="tab-btn" id="btn-logout" style="color:var(--red)">
+      <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>Salir
     </button>
   </nav>
 
@@ -613,7 +859,7 @@
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast"><span id="toast-msg"></span><span class="toast-close" id="toast-close">✕</span></div>
 
 <script>
 const ICONS = {
@@ -643,7 +889,14 @@ const ICONS = {
 const getCategoryIcon = (icon, color = '#8E8E93') => ICONS[icon] || ICONS.circle;
 
 const api = {
+  _headers() {
+    const h = { 'Accept': 'application/json' };
+    const token = localStorage.getItem('auth_token');
+    if (token) h['Authorization'] = 'Bearer ' + token;
+    return h;
+  },
   parseError(res, text) {
+    console.error('API Error', res.status, res.url, text);
     try {
       const json = JSON.parse(text);
       if (json.message) return json.message;
@@ -656,17 +909,14 @@ const api = {
     } catch (e) { return `Error ${res.status}`; }
   },
   async get(url) {
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: this._headers() });
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     return res.json();
   },
   async post(url, data) {
     const res = await fetch(url, { 
       method: 'POST', 
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }, 
+      headers: { ...this._headers(), 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     });
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
@@ -675,17 +925,14 @@ const api = {
   async patch(url, data) {
     const res = await fetch(url, { 
       method: 'PATCH', 
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }, 
+      headers: { ...this._headers(), 'Content-Type': 'application/json' }, 
       body: JSON.stringify(data) 
     });
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     return res.json();
   },
   async del(url) {
-    const res = await fetch(url, { method: 'DELETE' });
+    const res = await fetch(url, { method: 'DELETE', headers: this._headers() });
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     const text = await res.text();
     if (text) { try { return JSON.parse(text); } catch { return true; } }
@@ -693,14 +940,27 @@ const api = {
   }
 };
 
+const CURRENCIES = { CUP: 'CUP', USD: 'USD', EUR: 'EUR', MXN: 'MXN' };
+let currentCurrency = localStorage.getItem('ledger_currency') || 'CUP';
+
 const ui = {
+  _toastTimer: null,
   toast(msg, duration = 3000) {
     const el = document.getElementById('toast');
-    el.textContent = msg; el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), duration);
+    document.getElementById('toast-msg').textContent = msg;
+    el.classList.remove('error');
+    el.classList.add('show');
+    clearTimeout(this._toastTimer);
+    if (duration > 0) { this._toastTimer = setTimeout(() => el.classList.remove('show'), duration); }
+  },
+  toastError(msg) {
+    const el = document.getElementById('toast');
+    document.getElementById('toast-msg').textContent = msg;
+    el.classList.add('error', 'show');
+    clearTimeout(this._toastTimer);
   },
   formatMoney(amount) {
-    return parseFloat(amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' CUP';
+    return parseFloat(amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currentCurrency;
   },
   formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -714,7 +974,146 @@ const ui = {
   }
 };
 
-// ===== MODALS =====
+document.getElementById('toast-close').addEventListener('click', () => {
+  document.getElementById('toast').classList.remove('show');
+});
+
+function showLoading(id) {
+  document.getElementById('loading-' + id)?.style.removeProperty('display');
+  document.getElementById('content-' + id)?.style.setProperty('display', 'none');
+}
+function hideLoading(id) {
+  document.getElementById('loading-' + id)?.style.setProperty('display', 'none');
+  document.getElementById('content-' + id)?.style.removeProperty('display');
+}
+
+function checkPasswordStrength(pw) {
+  const checks = {
+    length: pw.length >= 8,
+    upper: /[A-Z]/.test(pw),
+    lower: /[a-z]/.test(pw),
+    number: /[0-9]/.test(pw),
+    special: /[^a-zA-Z0-9]/.test(pw),
+  };
+  const score = Object.values(checks).filter(Boolean).length;
+  const colors = ['', '#FF453A', '#FF9F0A', '#FFD60A', '#30D158', '#30D158'];
+  const labels = ['', 'Débil', 'Media', 'Fuerte', 'Muy fuerte', 'Excelente'];
+  return { checks, score, color: colors[score], label: labels[score] };
+}
+
+function updateStrengthMeter() {
+  const pw = document.getElementById('reg-password').value;
+  const s = checkPasswordStrength(pw);
+  document.getElementById('strength-fill').style.width = (s.score / 5 * 100) + '%';
+  document.getElementById('strength-fill').style.background = s.color;
+  document.getElementById('strength-label').textContent = pw ? s.label : '';
+  ['length', 'upper', 'lower', 'number', 'special'].forEach(k => {
+    const el = document.getElementById('check-' + k);
+    el.textContent = s.checks[k] ? '✓' : '✕';
+    el.className = 'check' + (s.checks[k] ? ' pass' : '');
+  });
+}
+
+const auth = {
+  async init() {
+    const splash = document.getElementById('splash');
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      try {
+        const user = await api.get('/api/user');
+        this.user = user;
+        splash.classList.add('hidden');
+        this.showApp();
+        app.init();
+        return;
+      } catch {
+        localStorage.removeItem('auth_token');
+      }
+    }
+    splash.classList.add('hidden');
+    this.showWelcome();
+  },
+  showWelcome() {
+    document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-welcome').classList.add('active');
+    document.querySelector('.fab')?.style.setProperty('display', 'none');
+    document.querySelector('.tab-bar')?.style.setProperty('display', 'none');
+    document.querySelector('.content')?.style.setProperty('display', 'none');
+  },
+  showLogin() {
+    document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-login').classList.add('active');
+    document.getElementById('login-error').classList.remove('visible');
+    document.getElementById('login-username').focus();
+    document.querySelector('.fab')?.style.setProperty('display', 'none');
+    document.querySelector('.tab-bar')?.style.setProperty('display', 'none');
+    document.querySelector('.content')?.style.setProperty('display', 'none');
+  },
+  showRegister() {
+    document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-register').classList.add('active');
+    document.getElementById('register-error').classList.remove('visible');
+    document.getElementById('reg-username').focus();
+    document.querySelector('.fab')?.style.setProperty('display', 'none');
+    document.querySelector('.tab-bar')?.style.setProperty('display', 'none');
+    document.querySelector('.content')?.style.setProperty('display', 'none');
+  },
+  showApp() {
+    document.querySelectorAll('.auth-page').forEach(p => p.classList.remove('active'));
+    document.querySelector('.fab')?.style.removeProperty('display');
+    document.querySelector('.tab-bar')?.style.removeProperty('display');
+    document.querySelector('.content')?.style.removeProperty('display');
+  },
+  async login() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl = document.getElementById('login-error');
+    if (!username || !password) { errEl.textContent = 'Completa todos los campos'; errEl.classList.add('visible'); return; }
+    try {
+      document.getElementById('btn-login').disabled = true;
+      const res = await api.post('/api/login', { username, password });
+      localStorage.setItem('auth_token', res.token);
+      this.user = res.user;
+      this.showApp();
+      app.init();
+    } catch (e) {
+      errEl.textContent = e.message || 'Error al iniciar sesión';
+      errEl.classList.add('visible');
+      document.getElementById('btn-login').disabled = false;
+    }
+  },
+  async register() {
+    const username = document.getElementById('reg-username').value.trim();
+    const email = document.getElementById('reg-email').value.trim() || null;
+    const password = document.getElementById('reg-password').value;
+    const confirm = document.getElementById('reg-password-confirm').value;
+    const errEl = document.getElementById('register-error');
+    const s = checkPasswordStrength(password);
+    if (!username || username.length < 3) { errEl.textContent = 'El usuario debe tener al menos 3 caracteres'; errEl.classList.add('visible'); return; }
+    if (!password || s.score < 3) { errEl.textContent = 'La contraseña es muy débil'; errEl.classList.add('visible'); return; }
+    if (password !== confirm) { errEl.textContent = 'Las contraseñas no coinciden'; errEl.classList.add('visible'); return; }
+    try {
+      document.getElementById('btn-register').disabled = true;
+      const res = await api.post('/api/register', { username, email, password, password_confirmation: confirm });
+      localStorage.setItem('auth_token', res.token);
+      this.user = res.user;
+      this.showApp();
+      app.init();
+    } catch (e) {
+      errEl.textContent = e.message || 'Error al registrarse';
+      errEl.classList.add('visible');
+      document.getElementById('btn-register').disabled = false;
+    }
+  },
+  async logout() {
+    try {
+      await api.post('/api/logout');
+    } catch { /* ignore */ }
+    localStorage.removeItem('auth_token');
+    this.user = null;
+    this.showWelcome();
+  },
+};
 const modals = {
   open(id) { document.getElementById(id).classList.add('show'); document.body.style.overflow = 'hidden'; },
   close(id) { document.getElementById(id).classList.remove('show'); document.body.style.overflow = ''; },
@@ -982,6 +1381,7 @@ const app = {
   transactions: [], categories: [], month: '', typeFilter: 'all',
   currentPage: 1, lastPage: 1, loadingMore: false,
   editingTransactionId: null, editingCategoryId: null,
+  searchQuery: '',
   async init() {
     this.month = new Date().toISOString().slice(0, 7);
     cash.init(); initCharts();
@@ -989,11 +1389,16 @@ const app = {
     document.getElementById('tx-date').value = today;
     document.getElementById('tx-date').max = today;
     this.updateMonthLabels();
+    document.getElementById('currency-select').value = currentCurrency;
     await this.loadData();
     await this.loadAnalyticsData();
     await cash.loadHistory();
+    hideLoading('home');
+    hideLoading('analytics');
+    hideLoading('cash');
   },
   async loadData() {
+    showLoading('home');
     try {
       const [categories, dashboard] = await Promise.all([
         api.get('/api/categories'),
@@ -1009,7 +1414,9 @@ const app = {
       if (analyticsChartsReady) updateDoughnut(dashboard);
       renderKPIs(dashboard);
       await this.loadTransactions(true);
-    } catch (e) { ui.toast('Error al cargar: ' + e.message); }
+      await this.loadAnalyticsData();
+    } catch (e) { ui.toastError('Error al cargar: ' + e.message); }
+    finally { hideLoading('home'); }
   },
   async loadAnalyticsData() {
     try {
@@ -1026,9 +1433,10 @@ const app = {
         updateOverviewChart(overview);
         updateWeekdayChart(weekday);
       }
-    } catch (e) { ui.toast('Error al cargar análisis: ' + e.message); }
+    } catch (e) { ui.toastError('Error al cargar análisis: ' + e.message); }
   },
   async loadTransactions(reset = false) {
+    showLoading('tx');
     if (this.loadingMore) return;
     if (reset) {
       this.transactions = [];
@@ -1038,13 +1446,13 @@ const app = {
     if (this.currentPage > this.lastPage) return;
     this.loadingMore = true;
     try {
-      const response = await api.get(`/api/transactions?month=${this.month}&type=${this.typeFilter}&page=${this.currentPage}`);
+      const response = await api.get(`/api/transactions?month=${this.month}&type=${this.typeFilter}&page=${this.currentPage}${this.searchQuery ? '&q=' + encodeURIComponent(this.searchQuery) : ''}`);
       this.transactions = this.transactions.concat(response.data);
       this.lastPage = response.last_page;
       this.currentPage = response.current_page + 1;
       this.renderTimeline();
-    } catch (e) { ui.toast('Error al cargar transacciones: ' + e.message); }
-    finally { this.loadingMore = false; }
+    } catch (e) { ui.toastError('Error al cargar transacciones: ' + e.message); }
+    finally { this.loadingMore = false; hideLoading('tx'); }
   },
   async loadMoreTransactions() {
     if (this.currentPage > this.lastPage || this.loadingMore) return;
@@ -1104,25 +1512,29 @@ const app = {
     const cats = (data.category_series || []).slice(0, 5);
     if (!cats.length) { container.innerHTML = '<div class="empty-state">Sin categorías este mes</div>'; return; }
     const maxVal = Math.max(...cats.map(c => c.total), 1);
-    container.innerHTML = cats.map(c => `
+    container.innerHTML = cats.map(c => {
+      const catOwner = app.categories.find(a => a.id == c.category_id);
+      const isOwn = catOwner && catOwner.user_id;
+      return `
       <div class="cat-card">
         <div class="cat-icon" style="background:${c.color}33;color:${c.color}">${getCategoryIcon(c.icon, c.color)}</div>
         <div class="cat-info"><div class="cat-name">${c.name}</div><div class="cat-bar"><div class="cat-bar-fill" style="width:${(c.total/maxVal*100)}%;background:${c.color}"></div></div></div>
         <div class="cat-amount" style="color:${c.color}">${ui.formatMoney(c.total)}</div>
+        ${isOwn ? `
         <button class="cat-edit" data-id="${c.category_id}" style="background:none;border:none;color:var(--secondary);cursor:pointer;padding:6px;margin-left:4px">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
         </button>
         <button class="cat-delete" data-id="${c.category_id}" style="background:none;border:none;color:var(--red);cursor:pointer;padding:6px;opacity:0.6">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        </button>
-      </div>
-    `).join('');
+        </button>` : ''}
+      </div>`;
+    }).join('');
   },
   renderTimeline() {
     const container = document.getElementById('timeline-container');
     let txs = this.transactions;
     if (this.typeFilter !== 'all') txs = txs.filter(t => t.type === this.typeFilter);
-    if (!txs.length) { container.innerHTML = '<div class="empty-state">Sin transacciones este mes</div>'; return; }
+    if (!txs.length) { container.innerHTML = '<div class="empty-state">' + (this.searchQuery ? 'Sin resultados para <strong>"' + this.searchQuery + '"</strong>' : 'Sin transacciones este mes') + '</div>'; return; }
 
     const grouped = txs.reduce((acc, tx) => {
       const day = tx.date.split('T')[0];
@@ -1197,6 +1609,15 @@ const app = {
             </div>`;
           }).join('')}
         </div>
+        ${Object.keys(d.categories).length > 1 ? `
+        <div class="day-cat-breakdown">
+          ${Object.values(d.categories).map(c => `
+            <div class="day-cat-row">
+              <span class="day-cat-dot" style="background:${c.color}"></span>
+              <span class="day-cat-name">${c.name}</span>
+              <span class="day-cat-total" style="color:${c.color}">${ui.formatMoney(c.total)}</span>
+            </div>`).join('')}
+        </div>` : ''}
       </div>`;
     }).join('');
   }
@@ -1360,7 +1781,63 @@ document.querySelector('.content').addEventListener('scroll', () => {
   }, 250);
 });
 
-document.addEventListener('DOMContentLoaded', () => app.init());
+// Search
+let searchTimeout;
+document.getElementById('search-tx').addEventListener('input', (e) => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    app.searchQuery = e.target.value;
+    document.getElementById('search-clear').classList.toggle('visible', !!e.target.value);
+    app.loadTransactions(true);
+  }, 300);
+});
+document.getElementById('search-clear').addEventListener('click', () => {
+  document.getElementById('search-tx').value = '';
+  document.getElementById('search-clear').classList.remove('visible');
+  app.searchQuery = '';
+  app.loadTransactions(true);
+  document.getElementById('search-tx').focus();
+});
+
+// Currency
+document.getElementById('currency-select').addEventListener('change', (e) => {
+  currentCurrency = e.target.value;
+  localStorage.setItem('ledger_currency', currentCurrency);
+  app.loadData();
+});
+
+// Swipe to edit on mobile
+let swipeStartX = 0, swipeStartY = 0, swipeTarget = null;
+document.querySelector('.content').addEventListener('touchstart', (e) => {
+  const row = e.target.closest('.tx-row');
+  if (!row) return;
+  swipeStartX = e.touches[0].clientX;
+  swipeStartY = e.touches[0].clientY;
+  swipeTarget = row;
+}, { passive: true });
+document.querySelector('.content').addEventListener('touchend', (e) => {
+  if (!swipeTarget) return;
+  const dx = e.changedTouches[0].clientX - swipeStartX;
+  const dy = e.changedTouches[0].clientY - swipeStartY;
+  if (Math.abs(dx) > 50 && Math.abs(dy) < 40) {
+    const editBtn = swipeTarget.querySelector('.tx-edit');
+    if (editBtn) editBtn.click();
+  }
+  swipeTarget = null;
+}, { passive: true });
+
+document.addEventListener('DOMContentLoaded', () => auth.init());
+
+// Auth events
+document.getElementById('btn-logout').addEventListener('click', () => auth.logout());
+document.getElementById('reg-password').addEventListener('input', updateStrengthMeter);
+
+['login-username','login-password'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') auth.login(); });
+});
+['reg-username','reg-email','reg-password','reg-password-confirm'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') auth.register(); });
+});
 </script>
 </body>
 </html>

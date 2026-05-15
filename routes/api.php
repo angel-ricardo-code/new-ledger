@@ -1,11 +1,27 @@
 <?php
 
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ReconciliationController;
 use App\Http\Controllers\Api\TransactionController;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+
+RateLimiter::for('api', fn (Request $job) => Limit::perMinute(60)->by($job->user()?->id ?: $job->ip()));
+
+// Public routes
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/login', [AuthController::class, 'login']);
+
+// Protected routes
+Route::middleware(['throttle:api', 'auth:sanctum'])->group(function () {
+
+Route::post('/logout', [AuthController::class, 'logout']);
+Route::get('/user', [AuthController::class, 'user']);
 
 Route::get('/transactions', [TransactionController::class, 'index']);
 Route::post('/transactions', [TransactionController::class, 'store']);
@@ -25,3 +41,5 @@ Route::get('/reconciliation', [ReconciliationController::class, 'index']);
 Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
 Route::get('/analytics/top-transactions', [AnalyticsController::class, 'topTransactions']);
 Route::get('/analytics/weekday', [AnalyticsController::class, 'weekday']);
+
+});

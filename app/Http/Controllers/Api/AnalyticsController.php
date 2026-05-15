@@ -19,7 +19,8 @@ class AnalyticsController extends Controller
             $year = $date->year;
             $month = $date->month;
 
-            $txs = Transaction::whereYear('date', $year)
+            $txs = Transaction::where('user_id', auth()->id())
+                ->whereYear('date', $year)
                 ->whereMonth('date', $month)
                 ->get();
 
@@ -46,7 +47,8 @@ class AnalyticsController extends Controller
         [$year, $monthNum] = explode('-', $month);
         $limit = (int) ($request->limit ?? 5);
 
-        $query = Transaction::whereYear('date', $year)
+        $query = Transaction::where('user_id', auth()->id())
+            ->whereYear('date', $year)
             ->whereMonth('date', $monthNum)
             ->with('category');
 
@@ -73,7 +75,8 @@ class AnalyticsController extends Controller
         $month = $request->month ?? now()->format('Y-m');
         [$year, $monthNum] = explode('-', $month);
 
-        $transactions = Transaction::whereYear('date', $year)
+        $transactions = Transaction::where('user_id', auth()->id())
+            ->whereYear('date', $year)
             ->whereMonth('date', $monthNum)
             ->where('type', 'expense')
             ->get();

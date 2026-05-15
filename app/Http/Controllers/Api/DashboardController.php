@@ -6,18 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
         $month = $request->month ?? date('Y-m');
+
+        return Cache::remember('dashboard_' . $month . '_user_' . auth()->id(), 60, function () use ($month) {
         [$year, $monthNum] = explode('-', $month);
 
         $startDate = "{$month}-01";
         $endDate = date('Y-m-t', strtotime($startDate));
 
-        $transactions = Transaction::whereYear('date', $year)
+        $transactions = Transaction::where('user_id', auth()->id())
+            ->whereYear('date', $year)
             ->whereMonth('date', $monthNum)
             ->with('category')
             ->get();
@@ -55,14 +59,14 @@ class DashboardController extends Controller
         $prevMonth = date('Y-m', strtotime($month . '-01 -1 month'));
         $prevStart = "{$prevMonth}-01";
         $prevEnd = date('Y-m-t', strtotime($prevStart));
-        $prevTx = Transaction::whereBetween('date', [$prevStart, $prevEnd])->get();
+        $prevTx = Transaction::where('user_id', auth()->id())->whereBetween('date', [$prevStart, $prevEnd])->get();
         $prevTotals = $prevTx->groupBy('type')->map(fn($g) => $g->sum('amount'));
         $prevIncome = $prevTotals->get('income', 0);
         $prevExpense = $prevTotals->get('expense', 0);
         $prevReconciliation = $prevTotals->get('reconciliation', 0);
         $prevBalance = $prevIncome - $prevExpense + $prevReconciliation;
 
-        $lastRecon = Transaction::where('type', 'reconciliation')
+        $lastRecon = Transaction::where('user_id', auth()->id())->where('type', 'reconciliation')
             ->latest('date')
             ->first();
 
@@ -122,5 +126,6 @@ class DashboardController extends Controller
                 'days_in_month' => $daysInMonth,
             ],
         ]);
+        });
     }
 }

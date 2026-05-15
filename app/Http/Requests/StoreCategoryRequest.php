@@ -14,7 +14,7 @@ class StoreCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:50', 'unique:categories,name'],
+            'name' => ['required', 'string', 'max:50'],
             'type' => ['required', 'in:income,expense'],
             'color_hex' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'icon' => ['nullable', 'string', 'in:utensils,car,zap,heart,film,shopping-bag,home,briefcase,book,gift,coffee,credit-card,smartphone,plane,dumbbell,music,paw-print,wallet,graduation-cap,circle,laptop,trending-up'],
@@ -24,7 +24,6 @@ class StoreCategoryRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.unique' => 'Ya existe una categoría con ese nombre.',
             'name.required' => 'El nombre es requerido.',
             'name.max' => 'El nombre no puede tener más de 50 caracteres.',
             'type.required' => 'Selecciona el tipo de categoría.',
