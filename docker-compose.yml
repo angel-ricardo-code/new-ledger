@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: finance
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345.Sql
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment: &app-env
+      APP_ENV: local
+      APP_DEBUG: true
+      APP_KEY: base64:yn/JsRiTnPSkvXFYwWfGbJ+AJT8Cr4TnEdWtbpCHSok=
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: finance
+      DB_USERNAME: postgres
+      DB_PASSWORD: 12345.Sql
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      CACHE_STORE: database
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["php", "artisan", "migrate", "--force"]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    environment:
+      <<: *app-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - app_storage:/var/www/storage
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  app_storage:

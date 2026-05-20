@@ -1,24 +1,51 @@
 services:
   - type: web
     name: ledger
-    env: php
-    buildCommand: composer install --no-dev --optimize-autoloader && php artisan config:cache && php artisan route:cache && php artisan view:cache
-    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    runtime: docker
+    repo: https://github.com/tu-usuario/tu-repo
+    dockerfilePath: ./Dockerfile
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /
+    releaseCommand: php artisan migrate --force
     envVars:
-      - key: APP_KEY
-        generateValue: true
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: false
+        value: "false"
       - key: DB_CONNECTION
         value: pgsql
-      - key: DATABASE_URL
+      - key: DB_HOST
         fromDatabase:
           name: ledger-db
-          property: connectionString
+          property: host
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        fromDatabase:
+          name: ledger-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: ledger-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: ledger-db
+          property: password
+      - key: SESSION_DRIVER
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: LOG_CHANNEL
+        value: stderr
+    plan: free
 
 databases:
   - name: ledger-db
     databaseName: ledger
     plan: free
+    postgresMajorVersion: 16
+    ipAllowList: []
