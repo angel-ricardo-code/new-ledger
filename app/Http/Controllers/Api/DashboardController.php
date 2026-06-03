@@ -77,6 +77,14 @@ class DashboardController extends Controller
             ->count();
         $avgDailyExpense = $daysInMonth > 0 ? $expenseTotal / $daysInMonth : 0;
 
+        $allExpenses = Transaction::where('user_id', auth()->id())
+            ->where('type', 'expense')
+            ->get();
+        $totalExpenseAll = $allExpenses->sum('amount');
+        $firstTx = Transaction::where('user_id', auth()->id())->oldest('date')->first();
+        $daysSinceFirst = $firstTx ? max(1, now()->diffInDays($firstTx->date)) : 1;
+        $historicalAvgExpense = round($totalExpenseAll / $daysSinceFirst, 2);
+
         $topExpenseCat = $categorySeries->sortByDesc('total')->first();
 
         $biggestDay = $dailySeries->filter(fn($d) => ($d['expense'] ?? 0) > 0)
@@ -86,6 +94,17 @@ class DashboardController extends Controller
         $biggestTx = $transactions->where('type', 'expense')
             ->sortByDesc('amount')
             ->first();
+
+        $allIncome = Transaction::where('user_id', auth()->id())->where('type', 'income')->sum('amount');
+        $allExpense = Transaction::where('user_id', auth()->id())->where('type', 'expense')->sum('amount');
+        $allRecon = Transaction::where('user_id', auth()->id())->where('type', 'reconciliation')->sum('amount');
+        $globalBalance = (float) ($allIncome - $allExpense + $allRecon);
+
+        $firstTx = Transaction::where('user_id', auth()->id())->oldest('date')->first();
+        $totalMonths = $firstTx
+            ? now()->diffInMonths($firstTx->date->startOfMonth()) + 1
+            : 1;
+        $monthlyAvg = $totalMonths > 0 ? round($globalBalance / $totalMonths, 2) : 0;
 
         return response()->json([
             'balance' => $balance,
@@ -124,7 +143,11 @@ class DashboardController extends Controller
                 ] : null,
                 'days_without_expenses' => max(0, $daysInMonth - $expenseDays),
                 'days_in_month' => $daysInMonth,
+                'historical_avg_daily_expense' => $historicalAvgExpense,
             ],
+            'global_balance' => $globalBalance,
+            'monthly_avg' => $monthlyAvg,
+            'total_months' => $totalMonths,
         ]);
         });
     }

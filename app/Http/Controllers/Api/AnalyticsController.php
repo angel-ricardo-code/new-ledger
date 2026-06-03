@@ -70,6 +70,43 @@ class AnalyticsController extends Controller
         ]);
     }
 
+    public function heatmap(Request $request): JsonResponse
+    {
+        $year = (int) ($request->year ?? now()->year);
+        $start = "{$year}-01-01";
+        $end = "{$year}-12-31";
+
+        $transactions = Transaction::where('user_id', auth()->id())
+            ->whereBetween('date', [$start, $end])
+            ->get()
+            ->groupBy(fn($t) => $t->date->format('Y-m-d'));
+
+        $result = [];
+        $current = new \DateTime($start);
+        $endDate = new \DateTime($end);
+
+        while ($current <= $endDate) {
+            $date = $current->format('Y-m-d');
+            $dayTx = $transactions->get($date, collect());
+
+            $expense = (float) $dayTx->where('type', 'expense')->sum('amount');
+            $income = (float) $dayTx->where('type', 'income')->sum('amount');
+            $reconciliation = (float) $dayTx->where('type', 'reconciliation')->sum('amount');
+
+            $result[] = [
+                'date' => $date,
+                'income' => $income,
+                'expense' => $expense,
+                'reconciliation' => $reconciliation,
+                'net' => $income - $expense + $reconciliation,
+            ];
+
+            $current->modify('+1 day');
+        }
+
+        return response()->json($result);
+    }
+
     public function weekday(Request $request): JsonResponse
     {
         $month = $request->month ?? now()->format('Y-m');

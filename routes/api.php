@@ -41,5 +41,6 @@ Route::get('/reconciliation', [ReconciliationController::class, 'index']);
 Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
 Route::get('/analytics/top-transactions', [AnalyticsController::class, 'topTransactions']);
 Route::get('/analytics/weekday', [AnalyticsController::class, 'weekday']);
+Route::get('/analytics/heatmap', [AnalyticsController::class, 'heatmap']);
 
 });

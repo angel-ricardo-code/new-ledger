@@ -477,6 +477,17 @@
     .segmented { flex-wrap: nowrap; }
     .segment { font-size: 12px; padding: 6px 4px; }
   }
+  .btn-view-all { background:var(--elevated);border:none;border-radius:8px;color:var(--accent);padding:8px 16px;font-family:inherit;font-size:13px;cursor:pointer;width:100%;margin-top:8px; }
+  .heatmap-grid { display:grid;gap:2px;overflow-x:auto; }
+  .heatmap-grid .ml { font-size:9px;color:var(--secondary);white-space:nowrap;padding-left:2px; }
+  .heatmap-grid .dl { font-size:9px;color:var(--secondary);line-height:14px;text-align:right;padding-right:4px; }
+  .heatmap-grid .cell { width:14px;height:14px;border-radius:2px;background:var(--elevated); }
+  .heatmap-grid .cell.l1 { background:#3A1C1E; }
+  .heatmap-grid .cell.l2 { background:#6B2025; }
+  .heatmap-grid .cell.l3 { background:#A42D33; }
+  .heatmap-grid .cell.l4 { background:#FF453A; }
+  .heatmap-legend { display:flex;align-items:center;gap:4px;justify-content:flex-end;font-size:10px;color:var(--secondary);margin-bottom:8px; }
+  .heatmap-legend .cell { width:12px;height:12px;border-radius:2px; }
 </style>
 </head>
 <body>
@@ -533,6 +544,26 @@
           </button>
         </div>
       </div>
+
+      <div class="section-title">Calendario de gastos</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <button class="month-nav" id="heatmap-prev" style="background:var(--elevated);border:none;border-radius:8px;width:36px;height:36px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span style="font-size:16px;font-weight:600" id="heatmap-year">2026</span>
+        <button class="month-nav" id="heatmap-next" style="background:var(--elevated);border:none;border-radius:8px;width:36px;height:36px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="heatmap-grid" id="heatmap-grid"></div>
+      <div class="heatmap-legend">
+        <span>Menos</span>
+        <span class="cell l0"></span><span class="cell l1"></span>
+        <span class="cell l2"></span><span class="cell l3"></span>
+        <span class="cell l4"></span>
+        <span>Más</span>
+      </div>
+
       <div class="search-wrap">
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <input type="search" id="search-tx" placeholder="Buscar transacciones..." autocomplete="off">
@@ -587,7 +618,20 @@
       <div class="page-content" id="content-analytics" style="display:none">
         <div class="kpi-grid" id="kpi-grid"></div>
 
+      <div class="apple-card" style="margin-bottom:16px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;color:var(--secondary)">Balance promedio (período)</div>
+          <div style="font-size:20px;font-weight:700" id="avg-balance">$0.00</div>
+        </div>
+      </div>
+
       <div class="section-title">Comparativa mensual</div>
+      <div class="segmented" style="margin-bottom:12px" id="overview-months">
+        <div class="segment" data-months="3">3m</div>
+        <div class="segment active" data-months="6">6m</div>
+        <div class="segment" data-months="12">12m</div>
+        <div class="segment" data-months="24">24m</div>
+      </div>
       <div class="chart-grid">
         <div class="chart-card" style="grid-column:1/-1">
           <div class="chart-wrap"><canvas id="chartOverview"></canvas></div>
@@ -606,7 +650,7 @@
           <div class="chart-wrap" style="max-width:260px;margin:0 auto"><canvas id="chartDoughnut"></canvas></div>
         </div>
       </div>
-      </div>
+    </div>
     </div>
 
     <!-- CAJA -->
@@ -654,6 +698,16 @@
           <div style="text-align:right">
             <div style="font-size:13px;color:rgba(255,255,255,0.55)">Diferencia</div>
             <div style="font-size:20px;font-weight:700" id="cash-diff">$0.00</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12)">
+          <div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.55)">Balance global</div>
+            <div style="font-size:20px;font-weight:600" id="cash-global-balance">$0.00</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:13px;color:rgba(255,255,255,0.55)">Promedio mensual</div>
+            <div style="font-size:20px;font-weight:700" id="cash-monthly-avg">$0.00</div>
           </div>
         </div>
       </div>
@@ -753,6 +807,11 @@
         <div class="auth-error" id="login-error"></div>
         <div class="form-group"><label>Usuario</label><input type="text" id="login-username" autocomplete="username"></div>
         <div class="form-group"><label>Contraseña</label><input type="password" id="login-password" autocomplete="current-password"></div>
+        <div class="auth-checkbox" style="margin-bottom:16px">
+          <span class="check" id="check-remember">✓</span>
+          <input type="checkbox" id="login-remember" style="display:none">
+          <label for="login-remember" style="flex:1;cursor:pointer;font-size:13px;color:var(--secondary)">Recordar este dispositivo</label>
+        </div>
         <button class="btn-primary" id="btn-login" onclick="auth.login()">Entrar</button>
       </div>
       <div class="auth-link">¿No tienes cuenta? <a onclick="auth.showRegister()">Regístrate</a></div>
@@ -917,12 +976,6 @@ const ICONS = {
 const getCategoryIcon = (icon, color = '#8E8E93') => ICONS[icon] || ICONS.circle;
 
 const api = {
-  _headers() {
-    const h = { 'Accept': 'application/json' };
-    const token = localStorage.getItem('auth_token');
-    if (token) h['Authorization'] = 'Bearer ' + token;
-    return h;
-  },
   parseError(res, text) {
     console.error('API Error', res.status, res.url, text);
     try {
@@ -937,34 +990,45 @@ const api = {
     } catch (e) { return `Error ${res.status}`; }
   },
   async get(url) {
-    const res = await fetch(url, { headers: this._headers() });
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'include' });
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     return res.json();
   },
   async post(url, data) {
-    const res = await fetch(url, { 
-      method: 'POST', 
-      headers: { ...this._headers(), 'Content-Type': 'application/json' }, 
-      body: JSON.stringify(data) 
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
     });
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     return res.json();
   },
   async patch(url, data) {
-    const res = await fetch(url, { 
-      method: 'PATCH', 
-      headers: { ...this._headers(), 'Content-Type': 'application/json' }, 
-      body: JSON.stringify(data) 
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
     });
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     return res.json();
   },
   async del(url) {
-    const res = await fetch(url, { method: 'DELETE', headers: this._headers() });
+    const res = await fetch(url, { method: 'DELETE', headers: { 'Accept': 'application/json' }, credentials: 'include' });
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     const text = await res.text();
     if (text) { try { return JSON.parse(text); } catch { return true; } }
     return true;
+  },
+  async csrf() {
+    const res = await fetch('/sanctum/csrf-cookie', { credentials: 'include' });
+    if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
+  },
+  async getSilent(url) {
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'include' });
+    if (!res.ok) throw new Error('');
+    return res.json();
   }
 };
 
@@ -1045,18 +1109,15 @@ function updateStrengthMeter() {
 const auth = {
   async init() {
     const splash = document.getElementById('splash');
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      try {
-        const user = await api.get('/api/user');
-        this.user = user;
-        splash.classList.add('hidden');
-        this.showApp();
-        app.init();
-        return;
-      } catch {
-        localStorage.removeItem('auth_token');
-      }
+    try {
+      const user = await api.getSilent('/api/user');
+      this.user = user;
+      splash.classList.add('hidden');
+      this.showApp();
+      app.init();
+      return;
+    } catch {
+      /* Not authenticated */
     }
     splash.classList.add('hidden');
     this.showWelcome();
@@ -1095,12 +1156,13 @@ const auth = {
   async login() {
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
+    const remember = document.getElementById('login-remember')?.checked || false;
     const errEl = document.getElementById('login-error');
     if (!username || !password) { errEl.textContent = 'Completa todos los campos'; errEl.classList.add('visible'); return; }
     try {
       document.getElementById('btn-login').disabled = true;
-      const res = await api.post('/api/login', { username, password });
-      localStorage.setItem('auth_token', res.token);
+      await api.csrf();
+      const res = await api.post('/api/login', { username, password, remember });
       this.user = res.user;
       this.showApp();
       app.init();
@@ -1122,8 +1184,8 @@ const auth = {
     if (password !== confirm) { errEl.textContent = 'Las contraseñas no coinciden'; errEl.classList.add('visible'); return; }
     try {
       document.getElementById('btn-register').disabled = true;
+      await api.csrf();
       const res = await api.post('/api/register', { username, email, password, password_confirmation: confirm });
-      localStorage.setItem('auth_token', res.token);
       this.user = res.user;
       this.showApp();
       app.init();
@@ -1137,7 +1199,6 @@ const auth = {
     try {
       await api.post('/api/logout');
     } catch { /* ignore */ }
-    localStorage.removeItem('auth_token');
     this.user = null;
     this.showWelcome();
   },
@@ -1235,6 +1296,10 @@ const cash = {
       el.textContent = 'Nunca';
     }
   },
+  setGlobalStats(balance, avg) {
+    document.getElementById('cash-global-balance').textContent = ui.formatMoney(balance || 0);
+    document.getElementById('cash-monthly-avg').textContent = ui.formatMoney(avg || 0);
+  },
   async reconcile() {
     if (this.total <= 0) { ui.toast('Cuenta el efectivo primero'); return; }
     const note = document.getElementById('recon-note').value.trim();
@@ -1287,6 +1352,10 @@ const cash = {
 // ===== CHARTS =====
 let chartOverview, chartWeekday, chartDoughnut;
 let analyticsChartsReady = false;
+let overviewMonths = 6;
+let topTxLimit = 5;
+let heatmapYear = new Date().getFullYear();
+let heatmapData = null;
 const analyticsCache = { overview: null, top: null, weekday: null, dashboard: null };
 
 function initCharts() {
@@ -1372,6 +1441,11 @@ function renderKPIs(data) {
       <div class="kpi-sub">${kpi.days_without_expenses} días sin gastos</div>
     </div>
     <div class="kpi-card">
+      <div class="kpi-label">Promedio diario histórico</div>
+      <div class="kpi-val" style="color:var(--accent)">${ui.formatMoney(kpi.historical_avg_daily_expense)}</div>
+      <div class="kpi-sub">Desde el primer registro</div>
+    </div>
+    <div class="kpi-card">
       <div class="kpi-label">Categoría más cara</div>
       <div class="kpi-val" style="color:${kpi.top_expense_category?.color || 'var(--secondary)'}">${kpi.top_expense_category ? ui.formatMoney(kpi.top_expense_category.amount) : 'N/A'}</div>
       <div class="kpi-sub">${kpi.top_expense_category?.name || 'Sin datos'}</div>
@@ -1387,6 +1461,57 @@ function renderKPIs(data) {
       <div class="kpi-sub">${kpi.biggest_transaction?.note || kpi.biggest_transaction?.category?.name || ''}</div>
     </div>
   `;
+}
+
+async function loadHeatmap() {
+  try {
+    heatmapData = await api.get(`/api/analytics/heatmap?year=${heatmapYear}`);
+    renderHeatmap();
+  } catch { /* ignore */ }
+}
+
+function renderHeatmap() {
+  const grid = document.getElementById('heatmap-grid');
+  if (!heatmapData) return;
+  document.getElementById('heatmap-year').textContent = heatmapYear;
+  const maxExpense = Math.max(...heatmapData.map(d => d.expense), 1);
+  const firstDay = (new Date(heatmapYear, 0, 1).getDay() + 6) % 7;
+  const totalCols = Math.ceil((firstDay + heatmapData.length) / 7);
+  const days = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+  const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+  grid.style.gridTemplateColumns = `28px repeat(${totalCols},14px)`;
+  grid.style.gridTemplateRows = 'auto repeat(7,14px)';
+
+  const els = [];
+
+  const seenCols = new Set();
+  for (let m = 0; m < 12; m++) {
+    const doy = Math.floor((new Date(heatmapYear, m, 1) - new Date(heatmapYear, 0, 1)) / 86400000);
+    const col = Math.floor((doy + firstDay) / 7);
+    if (seenCols.has(col)) continue;
+    seenCols.add(col);
+    const lastDOY = m < 11 ? Math.floor((new Date(heatmapYear, m + 1, 1) - new Date(heatmapYear, 0, 1)) / 86400000) - 1 : heatmapData.length - 1;
+    const lastCol = Math.floor((lastDOY + firstDay) / 7);
+    const span = lastCol - col + 1;
+    els.push(`<div class="ml" style="grid-row:1;grid-column:${col + 2}/span ${span}">${monthNames[m]}</div>`);
+  }
+
+  for (let d = 0; d < 7; d++) {
+    els.push(`<div class="dl" style="grid-row:${d + 2};grid-column:1">${days[d]}</div>`);
+  }
+
+  for (let i = 0; i < heatmapData.length; i++) {
+    const d = heatmapData[i];
+    const row = ((firstDay + i) % 7) + 2;
+    const col = Math.floor((firstDay + i) / 7) + 2;
+    const ratio = d.expense / maxExpense;
+    const level = !ratio ? '' : ratio < 0.25 ? 'l1' : ratio < 0.5 ? 'l2' : ratio < 0.75 ? 'l3' : 'l4';
+    const title = `${d.date}: $${ui.formatMoney(d.expense)} en gastos`;
+    els.push(`<div class="cell ${level}" style="grid-row:${row};grid-column:${col}" title="${title}"></div>`);
+  }
+
+  grid.innerHTML = els.join('');
 }
 
 function renderTopTransactions(data) {
@@ -1415,7 +1540,10 @@ function renderTopTransactions(data) {
     </div>`;
 
   container.innerHTML = (hasExpense ? renderList('Mayores gastos', data.top_expense, true) : '')
-    + (hasIncome ? renderList('Mayores ingresos', data.top_income, false) : '');
+    + (hasIncome ? renderList('Mayores ingresos', data.top_income, false) : '')
+    + (topTxLimit >= 100
+      ? '<button class="btn-view-all" id="btn-view-less-top">Ver menos</button>'
+      : '<button class="btn-view-all" id="btn-view-all-top">Ver todos</button>');
 }
 
 // ===== APP =====
@@ -1423,7 +1551,7 @@ const app = {
   transactions: [], categories: [], month: '', typeFilter: 'all',
   currentPage: 1, lastPage: 1, loadingMore: false,
   editingTransactionId: null, editingCategoryId: null,
-  searchQuery: '',
+  searchQuery: '', _monthTimer: null,
   async init() {
     this.month = new Date().toISOString().slice(0, 7);
     cash.init(); initCharts();
@@ -1449,6 +1577,7 @@ const app = {
       this.categories = categories;
       cash.setBalance(dashboard.balance);
       cash.setLastRecon(dashboard.last_reconciliation);
+      cash.setGlobalStats(dashboard.global_balance, dashboard.monthly_avg);
       this.renderCategoriesSelect();
       this.renderSummary(dashboard);
       this.renderCategoryList(dashboard);
@@ -1463,8 +1592,8 @@ const app = {
   async loadAnalyticsData() {
     try {
       const [overview, topTransactions, weekday] = await Promise.all([
-        api.get('/api/analytics/overview?months=6'),
-        api.get(`/api/analytics/top-transactions?month=${this.month}`),
+        api.get(`/api/analytics/overview?months=${overviewMonths}`),
+        api.get(`/api/analytics/top-transactions?month=${this.month}&limit=${topTxLimit}`),
         api.get(`/api/analytics/weekday?month=${this.month}`),
       ]);
       analyticsCache.overview = overview;
@@ -1475,6 +1604,11 @@ const app = {
         updateOverviewChart(overview);
         updateWeekdayChart(weekday);
       }
+      if (overview.length) {
+        const avgBalance = overview.reduce((sum, m) => sum + m.balance, 0) / overview.length;
+        document.getElementById('avg-balance').textContent = ui.formatMoney(avgBalance);
+      }
+      if (!heatmapData) loadHeatmap();
     } catch (e) { ui.toastError('Error al cargar análisis: ' + e.message); }
   },
   async loadTransactions(reset = false) {
@@ -1516,8 +1650,11 @@ const app = {
     if (newDate > currentMonth) return;
     this.month = newDate.toISOString().slice(0, 7);
     this.updateMonthLabels();
-    this.loadData();
-    this.loadAnalyticsData();
+    clearTimeout(this._monthTimer);
+    this._monthTimer = setTimeout(() => {
+      this.loadData();
+      this.loadAnalyticsData();
+    }, 150);
   },
   async deleteTransaction(id) {
     try {
@@ -1583,11 +1720,11 @@ const app = {
       if (!acc[day]) acc[day] = { date: day, transactions: [], categories: {}, totalIncome: 0, totalExpense: 0 };
       acc[day].transactions.push(tx);
       const cid = tx.category?.id || 'none';
-      if (!acc[day].categories[cid]) acc[day].categories[cid] = { 
-        name: tx.category?.name || 'Sin cat.', 
-        color: tx.category?.color_hex || '#8E8E93', 
+      if (!acc[day].categories[cid]) acc[day].categories[cid] = {
+        name: tx.category?.name || 'Sin cat.',
+        color: tx.category?.color_hex || '#8E8E93',
         icon: tx.category?.icon || 'circle',
-        total: 0 
+        total: 0
       };
       acc[day].categories[cid].total += parseFloat(tx.amount);
       if (tx.type === 'income' || (tx.type === 'reconciliation' && parseFloat(tx.amount) >= 0)) {
@@ -1845,6 +1982,41 @@ document.getElementById('search-clear').addEventListener('click', () => {
   document.getElementById('search-tx').focus();
 });
 
+// Overview months selector
+document.getElementById('overview-months').addEventListener('click', (e) => {
+  const seg = e.target.closest('.segment');
+  if (!seg) return;
+  document.querySelectorAll('#overview-months .segment').forEach(s => s.classList.remove('active'));
+  seg.classList.add('active');
+  overviewMonths = parseInt(seg.dataset.months);
+  app.loadAnalyticsData();
+});
+
+// Top transactions "Ver todos" / "Ver menos"
+document.getElementById('top-transactions-container').addEventListener('click', (e) => {
+  if (e.target.id === 'btn-view-all-top') {
+    topTxLimit = 100;
+    app.loadAnalyticsData();
+  }
+  if (e.target.id === 'btn-view-less-top') {
+    topTxLimit = 5;
+    app.loadAnalyticsData();
+  }
+});
+
+// Heatmap year navigation
+document.getElementById('heatmap-prev').addEventListener('click', () => {
+  heatmapYear--;
+  heatmapData = null;
+  loadHeatmap();
+});
+document.getElementById('heatmap-next').addEventListener('click', () => {
+  if (heatmapYear >= new Date().getFullYear()) return;
+  heatmapYear++;
+  heatmapData = null;
+  loadHeatmap();
+});
+
 // Currency
 document.getElementById('currency-select').addEventListener('change', (e) => {
   currentCurrency = e.target.value;
@@ -1877,6 +2049,16 @@ document.addEventListener('DOMContentLoaded', () => auth.init());
 // Auth events
 document.getElementById('btn-logout').addEventListener('click', () => auth.logout());
 document.getElementById('reg-password').addEventListener('input', updateStrengthMeter);
+
+// Remember checkbox toggle
+document.getElementById('login-remember').addEventListener('change', (e) => {
+  document.getElementById('check-remember').classList.toggle('pass', e.target.checked);
+});
+document.getElementById('check-remember').addEventListener('click', () => {
+  const cb = document.getElementById('login-remember');
+  cb.checked = !cb.checked;
+  cb.dispatchEvent(new Event('change'));
+});
 
 ['login-username','login-password'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') auth.login(); });
