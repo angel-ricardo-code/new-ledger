@@ -18,4 +18,13 @@ class StoreReconciliationRequest extends FormRequest
             'note' => ['nullable', 'string', 'max:255'],
         ];
     }
+
+    protected function passedValidation(): void
+    {
+        if ($this->has('note')) {
+            $this->merge([
+                'note' => strip_tags($this->note),
+            ]);
+        }
+    }
 }

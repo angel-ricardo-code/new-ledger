@@ -21,6 +21,15 @@ class StoreCategoryRequest extends FormRequest
         ];
     }
 
+    protected function passedValidation(): void
+    {
+        if ($this->has('name')) {
+            $this->merge([
+                'name' => strip_tags($this->name),
+            ]);
+        }
+    }
+
     public function messages(): array
     {
         return [

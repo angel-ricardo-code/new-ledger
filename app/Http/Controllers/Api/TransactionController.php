@@ -7,12 +7,11 @@ use App\Http\Requests\StoreTransactionRequest;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 
 class TransactionController extends Controller
 {
-    public function index(Request $request): Response|JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $query = Transaction::where('user_id', auth()->id())->with('category');
 
@@ -30,31 +29,6 @@ class TransactionController extends Controller
             $query->where(function ($sub) use ($q) {
                 $sub->where('note', 'ilike', "%{$q}%");
             });
-        }
-
-        if ($request->boolean('export')) {
-            $transactions = $query->orderBy('date', 'desc')
-                ->orderBy('id', 'desc')
-                ->get();
-            $csv = "date,type,amount,category,note\n";
-            foreach ($transactions as $t) {
-                $category = str_replace('"', '""', $t->category?->name ?? '');
-                $note = str_replace('"', '""', $t->note ?? '');
-                $csv .= sprintf(
-                    "%s,%s,%.2f,\"%s\",\"%s\"\n",
-                    $t->date->format('Y-m-d'),
-                    $t->type,
-                    $t->amount,
-                    $category,
-                    $note
-                );
-            }
-
-            $month = $request->month ?? date('Y-m');
-            return response($csv, 200, [
-                'Content-Type' => 'text/csv',
-                'Content-Disposition' => "attachment; filename=ledger_export_{$month}.csv",
-            ]);
         }
 
         $transactions = $query->orderBy('date', 'desc')

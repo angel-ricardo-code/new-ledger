@@ -18,6 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         ]);
         $middleware->statefulApi();
+        $middleware->web(append: [
+            \App\Http\Middleware\ContentSecurityPolicy::class,
+        ]);
+        $middleware->api(append: [
+            \App\Http\Middleware\ContentSecurityPolicy::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(function ($request, Throwable $e) {
