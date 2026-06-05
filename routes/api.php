@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\ExportController;
@@ -35,6 +36,10 @@ Route::get('/categories', [CategoryController::class, 'index']);
 Route::post('/categories', [CategoryController::class, 'store']);
 Route::patch('/categories/{id}', [CategoryController::class, 'update']);
 Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
+
+Route::get('/budgets', [BudgetController::class, 'index']);
+Route::post('/budgets', [BudgetController::class, 'store']);
+Route::delete('/budgets/{id}', [BudgetController::class, 'destroy']);
 
 Route::get('/dashboard', [DashboardController::class, 'index']);
 

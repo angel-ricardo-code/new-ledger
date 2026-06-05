@@ -632,6 +632,7 @@ const app = {
         api.get(`/api/dashboard?month=${this.month}`)
       ]);
       this.categories = categories;
+      this.budgets = dashboard.budgets || [];
       cash.setBalance(dashboard.balance);
       cash.setLastRecon(dashboard.last_reconciliation);
       cash.setGlobalStats(dashboard.global_balance, dashboard.monthly_avg);
@@ -753,14 +754,37 @@ const app = {
     const cats = (data.category_series || []).slice(0, 5);
     if (!cats.length) { container.innerHTML = '<div class="empty-state">Sin categorías este mes</div>'; return; }
     const maxVal = Math.max(...cats.map(c => c.total), 1);
+    const budgets = data.budgets || [];
     container.innerHTML = cats.map(c => {
       const catOwner = app.categories.find(a => a.id == c.category_id);
       const isOwn = catOwner && catOwner.user_id;
+      const budget = budgets.find(b => b.category_id == c.category_id);
+      let budgetHtml = '';
+      if (budget) {
+        const pct = budget.percentage;
+        const barColor = pct >= 100 ? 'var(--red)' : pct >= 70 ? 'var(--orange)' : 'var(--green)';
+        const pctDisplay = pct >= 100 ? Math.round(pct) : pct;
+        budgetHtml = `
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--secondary);margin-top:6px">
+          <span>${ui.formatMoney(budget.spent)} / ${ui.formatMoney(budget.limit)}</span>
+          <span style="color:${barColor};font-weight:600">${pctDisplay}%</span>
+        </div>
+        <div class="cat-bar" style="margin-top:2px">
+          <div class="cat-bar-fill" style="width:${Math.min(pct, 100)}%;background:${barColor}"></div>
+        </div>`;
+      }
+      const budgetBtn = isOwn ? `
+        <button class="budget-btn" data-category-id="${c.category_id}" style="background:none;border:none;color:var(--secondary);cursor:pointer;opacity:0.6;font-size:16px;font-weight:600;padding:10px 8px" title="Presupuesto">$</button>` : '';
       return `
       <div class="cat-card">
         <div class="cat-icon" style="background:${c.color}33;color:${c.color}">${getCategoryIcon(c.icon, c.color)}</div>
-        <div class="cat-info"><div class="cat-name">${escapeHtml(c.name)}</div><div class="cat-bar"><div class="cat-bar-fill" style="width:${(c.total/maxVal*100)}%;background:${c.color}"></div></div></div>
+        <div class="cat-info">
+          <div class="cat-name">${escapeHtml(c.name)}</div>
+          <div class="cat-bar"><div class="cat-bar-fill" style="width:${(c.total/maxVal*100)}%;background:${c.color}"></div></div>
+          ${budgetHtml}
+        </div>
         <div class="cat-amount" style="color:${c.color}">${ui.formatMoney(c.total)}</div>
+        ${budgetBtn}
         ${isOwn ? `
         <button class="cat-edit" data-id="${c.category_id}" style="background:none;border:none;color:var(--secondary);cursor:pointer;opacity:0.6">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
@@ -770,6 +794,38 @@ const app = {
         </button>` : ''}
       </div>`;
     }).join('');
+    container.querySelectorAll('.budget-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        app.openBudgetModal(btn.dataset.categoryId);
+      });
+    });
+  },
+  openBudgetModal(categoryId) {
+    const select = document.getElementById('budget-category');
+    const limitInput = document.getElementById('budget-limit');
+    const deleteBtn = document.getElementById('btn-delete-budget');
+    const expenseCats = this.categories.filter(c => c.type === 'expense');
+    select.innerHTML = expenseCats.map(c =>
+      `<option value="${c.id}" ${c.id == categoryId ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+    ).join('');
+    const existing = (this.budgets || []).find(b => b.category_id == categoryId);
+    limitInput.value = existing ? existing.limit : '';
+    limitInput.dataset.editId = existing ? existing.id : '';
+    deleteBtn.style.display = existing ? '' : 'none';
+    modals.open('modal-budget');
+  },
+  async saveBudget() {
+    const categoryId = document.getElementById('budget-category').value;
+    const limit = document.getElementById('budget-limit').value;
+    if (!categoryId) { ui.toast('Selecciona una categoría'); return; }
+    if (!limit || parseFloat(limit) <= 0) { ui.toast('Ingresa un límite válido'); return; }
+    try {
+      await api.post('/api/budgets', { category_id: categoryId, limit: parseFloat(limit) });
+      ui.toast('Presupuesto guardado');
+      modals.closeAll();
+      await this.loadData();
+    } catch (e) { ui.toast('Error: ' + e.message); }
   },
   renderTimeline() {
     const container = document.getElementById('timeline-container');
@@ -925,6 +981,10 @@ document.getElementById('category-list').addEventListener('click', async (e) => 
     document.querySelectorAll('.icon-option').forEach(b => {
       b.classList.toggle('selected', b.dataset.icon === (cat.icon || 'circle'));
     });
+    const budget = (app.budgets || []).find(b => b.category_id == id);
+    document.getElementById('cat-budget-limit').value = budget ? budget.limit : '';
+    app.editingBudgetId = budget ? budget.id : null;
+    document.getElementById('budget-limit-group').style.display = cat.type === 'expense' ? '' : 'none';
     modals.closeAll();
     modals.open('modal-category');
     return;
@@ -951,11 +1011,14 @@ document.getElementById('sel-transaction').addEventListener('click', () => {
 document.getElementById('sel-category').addEventListener('click', () => {
   modals.closeAll();
   app.editingCategoryId = null;
+  app.editingBudgetId = null;
   document.getElementById('modal-category').querySelector('.modal-title').textContent = 'Nueva Categoría';
   document.getElementById('btn-add-category').textContent = 'Agregar';
   document.getElementById('cat-name').value = '';
   document.getElementById('cat-color').value = '#0A84FF';
   document.getElementById('cat-type').value = 'expense';
+  document.getElementById('cat-budget-limit').value = '';
+  document.getElementById('budget-limit-group').style.display = '';
   document.querySelectorAll('.icon-option').forEach(b => b.classList.remove('selected'));
   document.querySelector('[data-icon="utensils"]').classList.add('selected');
   modals.open('modal-category');
@@ -999,18 +1062,45 @@ document.getElementById('btn-add-category').addEventListener('click', async () =
   if (!data.name) { ui.toast('Ingresa un nombre'); return; }
   if (data.name.length > 50) { ui.toast('El nombre no puede exceder 50 caracteres'); return; }
   try {
-    if (app.editingCategoryId) {
-      await api.patch(`/api/categories/${app.editingCategoryId}`, data);
+    let catId = app.editingCategoryId;
+    if (catId) {
+      await api.patch(`/api/categories/${catId}`, data);
       app.editingCategoryId = null;
       ui.toast('Categoría actualizada');
     } else {
-      await api.post('/api/categories', data);
+      const created = await api.post('/api/categories', data);
+      catId = created.id;
       ui.toast('Categoría agregada');
     }
+    const budgetLimit = document.getElementById('cat-budget-limit').value.trim();
+    if (budgetLimit) {
+      await api.post('/api/budgets', { category_id: catId, limit: parseFloat(budgetLimit) });
+    } else if (app.editingBudgetId) {
+      await api.del(`/api/budgets/${app.editingBudgetId}`);
+    }
+    app.editingBudgetId = null;
     document.getElementById('cat-name').value = '';
+    document.getElementById('cat-budget-limit').value = '';
     await app.loadData();
     modals.closeAll();
   } catch (e) { ui.toast('Error: ' + e.message); }
+});
+
+document.getElementById('btn-save-budget').addEventListener('click', () => app.saveBudget());
+
+document.getElementById('btn-delete-budget').addEventListener('click', async () => {
+  const id = document.getElementById('budget-limit').dataset.editId;
+  if (!id) return;
+  try {
+    await api.del(`/api/budgets/${id}`);
+    ui.toast('Presupuesto eliminado');
+    modals.closeAll();
+    await app.loadData();
+  } catch (e) { ui.toast('Error: ' + e.message); }
+});
+
+document.getElementById('cat-type').addEventListener('change', (e) => {
+  document.getElementById('budget-limit-group').style.display = e.target.value === 'expense' ? '' : 'none';
 });
 
 // Export CSV / HTML

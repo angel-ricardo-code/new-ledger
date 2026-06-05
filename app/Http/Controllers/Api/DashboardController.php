@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Budget;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -106,6 +107,30 @@ class DashboardController extends Controller
             : 1;
         $monthlyAvg = $totalMonths > 0 ? round($globalBalance / $totalMonths, 2) : 0;
 
+        $budgets = Budget::where('user_id', auth()->id())
+            ->with('category')
+            ->get()
+            ->map(function ($budget) use ($year, $monthNum) {
+                $spent = (float) Transaction::where('user_id', auth()->id())
+                    ->where('category_id', $budget->category_id)
+                    ->where('type', 'expense')
+                    ->whereYear('date', $year)
+                    ->whereMonth('date', $monthNum)
+                    ->sum('amount');
+                return [
+                    'id' => $budget->id,
+                    'category_id' => $budget->category_id,
+                    'limit' => (float) $budget->limit,
+                    'spent' => $spent,
+                    'percentage' => $budget->limit > 0 ? round($spent / $budget->limit * 100, 1) : 0,
+                    'category' => [
+                        'name' => $budget->category->name,
+                        'color_hex' => $budget->category->color_hex,
+                        'icon' => $budget->category->icon,
+                    ],
+                ];
+            });
+
         return response()->json([
             'balance' => $balance,
             'income_total' => $incomeTotal,
@@ -148,6 +173,7 @@ class DashboardController extends Controller
             'global_balance' => $globalBalance,
             'monthly_avg' => $monthlyAvg,
             'total_months' => $totalMonths,
+            'budgets' => $budgets,
         ]);
         });
     }
