@@ -608,35 +608,113 @@ function renderForecast(data) {
   const container = document.getElementById('forecast-container');
   if (!data || data.method === 'insufficient_data' || !data.predictions?.length) {
     if (section) section.style.display = '';
-    container.innerHTML = '<div class="apple-card" style="padding:20px;text-align:center;color:var(--secondary);font-weight:300;animation:blink 2s ease-in-out infinite">Datos insuficientes — necesitas al menos 6 meses de gastos para generar una predicción.</div>';
+    container.innerHTML = '<div class="apple-card" style="padding:20px;text-align:center;color:var(--secondary);font-weight:700;animation:blink 2s ease-in-out infinite">Datos insuficientes — necesitas al menos 6 meses de gastos para generar una predicción.</div>';
     return;
   }
   section.style.display = '';
-  const next = data.predictions[0];
+
   const methodLabels = { 'holt-winters': 'Holt-Winters', 'holt-linear': 'Tendencia lineal', 'moving-average': 'Media móvil' };
+  const methodTitles = { 'holt-winters': 'Holt-Winters con estacionalidad', 'holt-linear': 'Holt lineal sin estacionalidad', 'moving-average': 'Media móvil' };
+  const methodShort = { 'holt-winters': 'HW', 'holt-linear': 'HL', 'moving-average': 'MM' };
   const methodLabel = methodLabels[data.method] || data.method;
+  const methodTitle = methodTitles[data.method] || data.method;
+  const methodShortLabel = methodShort[data.method] || data.method;
+  const next = data.predictions[0];
+  const maxPred = Math.max(...data.predictions.map(p => p.predicted));
+  const trendPct = data.predictions.length >= 2
+    ? ((data.predictions[data.predictions.length - 1].predicted - data.predictions[0].predicted) / data.predictions[0].predicted * 100)
+    : 0;
+  const trendSign = trendPct >= 0 ? '+' : '';
+  const markerLeft = next.upper > next.lower
+    ? ((next.predicted - next.lower) / (next.upper - next.lower)) * 100
+    : 50;
+
+  const svgSparkle = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.5 5h5l-4 3 1.5 5-4-3-4 3 1.5-5-4-3h5z"/></svg>';
+  const svgTrend = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="2,20 6,14 10,18 14,8 18,12 22,4"/></svg>';
+  const svgBrain = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m-6-8H2m20 0h-4"/></svg>';
+  const svgBulb = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 2a7 7 0 0 0-3.5 13.1A4 4 0 0 1 10 18h4a4 4 0 0 1 1.5-2.9A7 7 0 0 0 12 2z"/></svg>';
+
   container.innerHTML = `
-    <div class="apple-card" style="margin-bottom:16px;padding:20px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
-        <div style="font-size:13px;color:rgba(255,255,255,0.55)">Gasto estimado — próximo mes</div>
-        <div style="font-size:11px;color:rgba(255,255,255,0.35)">${methodLabel} · ±${ui.formatMoney(data.mae)}</div>
-      </div>
-      <div style="font-size:36px;font-weight:700;color:var(--orange)">${ui.formatMoney(next.predicted)}</div>
-      <div style="display:flex;gap:16px;margin-top:8px;font-size:13px;color:var(--secondary)">
-        <span>Mín: ${ui.formatMoney(next.lower)}</span>
-        <span>Máx: ${ui.formatMoney(next.upper)}</span>
-      </div>
+    <div class="forecast-mesh-bg">
+      <div class="forecast-orb forecast-orb-1"></div>
+      <div class="forecast-orb forecast-orb-2"></div>
+      <div class="forecast-orb forecast-orb-3"></div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(${Math.min(data.predictions.length, 3)}, 1fr);gap:10px;margin-bottom:16px">
-      ${data.predictions.map(p => `
-        <div style="background:var(--surface);border-radius:14px;padding:14px;border:1px solid var(--separator);text-align:center">
-          <div style="font-size:12px;color:var(--secondary);margin-bottom:4px">${escapeHtml(p.label)}</div>
-          <div style="font-size:20px;font-weight:700;color:var(--orange)">${ui.formatMoney(p.predicted)}</div>
-          <div style="font-size:11px;color:var(--secondary);margin-top:4px">±${ui.formatMoney(data.mae)}</div>
+    <div style="position:relative;z-index:10">
+      <div class="forecast-animate-slide" style="margin-bottom:1.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+          <h2 style="font-size:1.125rem;font-weight:700;color:#ffffff;letter-spacing:-0.01em">Pron\u00f3stico de Gastos</h2>
+          <div class="forecast-badge-ai" title="${methodTitle}">
+            ${svgBrain}
+            <span>Método ${methodShortLabel}</span>
+          </div>
         </div>
-      `).join('')}
-    </div>
-    ${data.total_months < 24 ? `<div style="font-size:12px;color:var(--secondary);text-align:center;margin-bottom:16px">Basado en ${data.total_months} meses de datos</div>` : ''}`;
+        <p style="font-size:12px;color:var(--secondary)">Basado en ${data.total_months} meses de datos hist\u00f3ricos</p>
+      </div>
+
+      <div class="forecast-glass-card forecast-prediction-main forecast-shine forecast-animate-slide forecast-delay-1">
+        <div class="forecast-glow-bg"></div>
+        <div style="position:relative;z-index:2">
+          <div class="forecast-header-row">
+            <div style="display:flex;align-items:center;gap:0.625rem">
+              <div class="forecast-icon-box fc-orange">${svgSparkle}</div>
+              <span style="font-size:12px;font-weight:500;color:var(--secondary)">Estimado pr\u00f3ximo mes</span>
+            </div>
+            <div class="forecast-badge-ai">
+              ${svgTrend}
+              <span>${methodLabel}</span>
+            </div>
+          </div>
+          <div class="forecast-amount-row forecast-animate-count forecast-delay-2">
+            <span class="forecast-amount">${ui.formatMoney(next.predicted)}</span>
+            <span class="forecast-currency">CUP</span>
+          </div>
+          <div class="forecast-confidence-section">
+            <div class="forecast-confidence-labels">
+              <span class="fc-label">Rango de confianza (95%)</span>
+              <span class="fc-value">\u00b1${ui.formatMoney(data.mae)}</span>
+            </div>
+            <div class="forecast-bar-container">
+              <div class="forecast-bar-segment forecast-bar-low"></div>
+              <div class="forecast-bar-segment forecast-bar-mid"></div>
+              <div class="forecast-bar-segment forecast-bar-high"></div>
+              <div class="forecast-bar-marker" style="left:${markerLeft}%"></div>
+            </div>
+            <div class="forecast-confidence-legend">
+              <span class="fc-min">${ui.formatMoney(next.lower)}</span>
+              <span class="fc-est">${ui.formatMoney(next.predicted)}</span>
+              <span class="fc-max">${ui.formatMoney(next.upper)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="forecast-month-grid forecast-animate-slide forecast-delay-3">
+        ${data.predictions.slice(0, 3).map((p, i) => {
+          const barWidth = maxPred > 0 ? (p.predicted / maxPred) * 100 : 0;
+          const delay = 'forecast-delay-' + (i + 2);
+          const active = i === 0 ? 'fc-active' : '';
+          return '<div class="forecast-glass-card forecast-month-card ' + active + ' forecast-shine forecast-animate-count ' + delay + '">'
+            + '<div class="fc-m-label">' + escapeHtml(p.label) + '</div>'
+            + '<div class="fc-m-amount">' + ui.formatMoney(p.predicted) + '</div>'
+            + '<div class="fc-m-variance">\u00b1' + ui.formatMoney(data.mae) + '</div>'
+            + '<div class="fc-mini-bar">'
+            + '<div class="fc-mini-bar-fill fc-animated" style="width:' + barWidth + '%"></div>'
+            + '</div></div>';
+        }).join('')}
+      </div>
+
+      <div class="forecast-glass-card forecast-insight-card forecast-animate-slide forecast-delay-4">
+        <div class="forecast-insight-icon">${svgBulb}</div>
+        <div>
+          <div class="forecast-insight-title">Tendencia detectada</div>
+          <p class="forecast-insight-text">
+            Se observa ${trendPct >= 0 ? 'un incremento' : 'una disminuci\u00f3n'} gradual de <span class="forecast-insight-highlight">${trendSign}${trendPct.toFixed(2)}%</span> mensual.
+            ${data.total_months < 24 ? 'Proyecci\u00f3n basada en ' + data.total_months + ' meses de datos.' : ''}
+          </p>
+        </div>
+      </div>
+    </div>`;
 }
 
 // ===== APP =====
