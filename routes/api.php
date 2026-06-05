@@ -51,6 +51,8 @@ Route::get('/analytics/top-transactions', [AnalyticsController::class, 'topTrans
 Route::get('/analytics/weekday', [AnalyticsController::class, 'weekday']);
 Route::get('/analytics/heatmap', [AnalyticsController::class, 'heatmap']);
 
+Route::get('/analytics/forecast', [AnalyticsController::class, 'forecast']);
+
 Route::get('/export', [ExportController::class, 'report']);
 
 });

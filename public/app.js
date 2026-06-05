@@ -603,6 +603,41 @@ function renderTopTransactions(data) {
       : '<button class="btn-view-all" id="btn-view-all-top">Ver todos</button>');
 }
 
+function renderForecast(data) {
+  const section = document.getElementById('forecast-section');
+  const container = document.getElementById('forecast-container');
+  if (!data || data.method === 'insufficient_data' || !data.predictions?.length) {
+    if (section) section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  const next = data.predictions[0];
+  const methodLabels = { 'holt-winters': 'Holt-Winters', 'holt-linear': 'Tendencia lineal', 'moving-average': 'Media móvil' };
+  const methodLabel = methodLabels[data.method] || data.method;
+  container.innerHTML = `
+    <div class="apple-card" style="margin-bottom:16px;padding:20px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:13px;color:rgba(255,255,255,0.55)">Gasto estimado — próximo mes</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35)">${methodLabel} · ±${ui.formatMoney(data.mae)}</div>
+      </div>
+      <div style="font-size:36px;font-weight:700;color:var(--orange)">${ui.formatMoney(next.predicted)}</div>
+      <div style="display:flex;gap:16px;margin-top:8px;font-size:13px;color:var(--secondary)">
+        <span>Mín: ${ui.formatMoney(next.lower)}</span>
+        <span>Máx: ${ui.formatMoney(next.upper)}</span>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(${Math.min(data.predictions.length, 3)}, 1fr);gap:10px;margin-bottom:16px">
+      ${data.predictions.map(p => `
+        <div style="background:var(--surface);border-radius:14px;padding:14px;border:1px solid var(--separator);text-align:center">
+          <div style="font-size:12px;color:var(--secondary);margin-bottom:4px">${escapeHtml(p.label)}</div>
+          <div style="font-size:20px;font-weight:700;color:var(--orange)">${ui.formatMoney(p.predicted)}</div>
+          <div style="font-size:11px;color:var(--secondary);margin-top:4px">±${ui.formatMoney(data.mae)}</div>
+        </div>
+      `).join('')}
+    </div>
+    ${data.total_months < 24 ? `<div style="font-size:12px;color:var(--secondary);text-align:center;margin-bottom:16px">Basado en ${data.total_months} meses de datos</div>` : ''}`;
+}
+
 // ===== APP =====
 const app = {
   transactions: [], categories: [], month: '', typeFilter: 'all',
@@ -653,14 +688,17 @@ const app = {
         api.get(`/api/analytics/overview?months=${overviewMonths}`),
         api.get(`/api/analytics/top-transactions?month=${this.month}&limit=${topTxLimit}`),
         api.get(`/api/analytics/weekday?month=${this.month}`),
+        api.get('/api/analytics/forecast?horizon=3'),
       ]);
       const overview = results[0].status === 'fulfilled' ? results[0].value : [];
       const topTransactions = results[1].status === 'fulfilled' ? results[1].value : null;
       const weekday = results[2].status === 'fulfilled' ? results[2].value : [];
+      const forecast = results[3].status === 'fulfilled' ? results[3].value : null;
       analyticsCache.overview = overview;
       analyticsCache.top = topTransactions;
       analyticsCache.weekday = weekday;
       if (topTransactions) renderTopTransactions(topTransactions);
+      if (forecast) renderForecast(forecast);
       if (analyticsChartsReady) {
         updateOverviewChart(overview);
         updateWeekdayChart(weekday);
