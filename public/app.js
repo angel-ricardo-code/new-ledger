@@ -607,7 +607,8 @@ function renderForecast(data) {
   const section = document.getElementById('forecast-section');
   const container = document.getElementById('forecast-container');
   if (!data || data.method === 'insufficient_data' || !data.predictions?.length) {
-    if (section) section.style.display = 'none';
+    if (section) section.style.display = '';
+    container.innerHTML = '<div class="apple-card" style="padding:20px;text-align:center;color:var(--secondary);font-weight:300;animation:blink 2s ease-in-out infinite">Datos insuficientes — necesitas al menos 6 meses de gastos para generar una predicción.</div>';
     return;
   }
   section.style.display = '';

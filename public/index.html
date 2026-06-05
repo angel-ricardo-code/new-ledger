@@ -41,6 +41,7 @@
   .page { display: none; }
   .page.active { display: block; animation: fadeIn .25s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
   .page-header { padding-top: calc(16px + env(safe-area-inset-top)); margin-bottom: 20px; }
   @media (min-width: 900px) { .page-header { padding-top: 8px; margin-bottom: 28px; } .page-header h1 { font-size: 36px; } }
