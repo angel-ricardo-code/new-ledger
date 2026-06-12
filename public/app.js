@@ -635,11 +635,6 @@ function renderForecast(data) {
   const svgBulb = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 2a7 7 0 0 0-3.5 13.1A4 4 0 0 1 10 18h4a4 4 0 0 1 1.5-2.9A7 7 0 0 0 12 2z"/></svg>';
 
   container.innerHTML = `
-    <div class="forecast-mesh-bg">
-      <div class="forecast-orb forecast-orb-1"></div>
-      <div class="forecast-orb forecast-orb-2"></div>
-      <div class="forecast-orb forecast-orb-3"></div>
-    </div>
     <div style="position:relative;z-index:10">
       <div class="forecast-animate-slide" style="margin-bottom:1.5rem">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">

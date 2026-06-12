@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCategoryRequest;
 use App\Models\Category;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
@@ -24,18 +23,10 @@ class CategoryController extends Controller
         return response()->json($category, 201);
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(StoreCategoryRequest $request, int $id): JsonResponse
     {
         $category = Category::where('user_id', auth()->id())->findOrFail($id);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:50'],
-            'type' => ['required', 'in:income,expense'],
-            'color_hex' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-            'icon' => ['nullable', 'string', 'in:utensils,car,zap,heart,film,shopping-bag,home,briefcase,book,gift,coffee,credit-card,smartphone,plane,dumbbell,music,paw-print,wallet,graduation-cap,circle,laptop,trending-up'],
-        ]);
-
-        $category->update($validated);
+        $category->update($request->validated());
         return response()->json($category);
     }
 
