@@ -12,7 +12,7 @@ class Transaction extends Model
     /** @use HasFactory<TransactionFactory> */
     use HasFactory;
 
-    protected $fillable = ['date', 'amount', 'type', 'category_id', 'note', 'user_id'];
+    protected $fillable = ['date', 'amount', 'type', 'category_id', 'note', 'user_id', 'idempotency_key'];
 
     protected $casts = [
         'date' => 'date',

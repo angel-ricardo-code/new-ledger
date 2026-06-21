@@ -18,7 +18,15 @@ class ContentSecurityPolicy
 
         $response->headers->set(
             'Content-Security-Policy',
-            "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'"
+            "default-src 'self'; " .
+            "script-src 'self' https://cdn.jsdelivr.net; " .
+            "style-src 'self' 'unsafe-inline'; " .
+            "img-src 'self' data:; " .
+            "connect-src 'self'; " .
+            "font-src 'self'; " .
+            "frame-ancestors 'none'; " .
+            "base-uri 'self'; " .
+            "form-action 'self'"
         );
 
         return $response;

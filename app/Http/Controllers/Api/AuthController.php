@@ -60,4 +60,17 @@ class AuthController extends Controller
     {
         return response()->json($request->user());
     }
+
+    public function updatePerfMode(Request $request): JsonResponse
+    {
+        $request->validate([
+            'perf_mode' => 'required|boolean',
+        ]);
+
+        $user = $request->user();
+        $user->perf_mode = $request->boolean('perf_mode');
+        $user->save();
+
+        return response()->json(['perf_mode' => $user->perf_mode]);
+    }
 }

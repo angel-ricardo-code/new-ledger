@@ -25,6 +25,7 @@ class TransactionController extends Controller
         }
 
         if ($request->filled('q')) {
+            $request->validate(['q' => 'nullable|string|max:100']);
             $q = $request->q;
             $query->where(function ($sub) use ($q) {
                 $sub->where('note', 'ilike', "%{$q}%");
@@ -40,7 +41,18 @@ class TransactionController extends Controller
 
     public function store(StoreTransactionRequest $request): JsonResponse
     {
-        $transaction = Transaction::create($request->validated());
+        $data = $request->validated();
+        $key = $data['idempotency_key'] ?? null;
+
+        if ($key) {
+            $existing = Transaction::where('user_id', auth()->id())
+                ->where('idempotency_key', $key)->first();
+            if ($existing) {
+                return response()->json($existing->load('category'), 200);
+            }
+        }
+
+        $transaction = Transaction::create($data);
         $transaction->load('category');
         $this->forgetDashboardCache($request->date ?? now()->format('Y-m-d'));
         return response()->json($transaction, 201);
@@ -48,8 +60,22 @@ class TransactionController extends Controller
 
     public function update(StoreTransactionRequest $request, int $id): JsonResponse
     {
+        $data = $request->validated();
+        $key = $data['idempotency_key'] ?? null;
+
+        if ($key) {
+            $existing = Transaction::where('user_id', auth()->id())
+                ->where('idempotency_key', $key)->first();
+            if ($existing) {
+                if ($existing->id !== $id) {
+                    return response()->json(['message' => 'Conflicto de llave de idempotencia'], 409);
+                }
+                return response()->json($existing->load('category'), 200);
+            }
+        }
+
         $transaction = Transaction::where('user_id', auth()->id())->findOrFail($id);
-        $transaction->update($request->validated());
+        $transaction->update($data);
         $transaction->load('category');
         $this->forgetDashboardCache($transaction->date->format('Y-m-d'));
         return response()->json($transaction);

@@ -82,7 +82,7 @@ const api = {
 };
 
 const CURRENCIES = { CUP: 'CUP', USD: 'USD', EUR: 'EUR', MXN: 'MXN' };
-let currentCurrency = localStorage.getItem('ledger_currency') || 'CUP';
+let currentCurrency = sessionStorage.getItem('ledger_currency') || 'CUP';
 
 const ui = {
   _toastTimer: null,
@@ -168,6 +168,7 @@ const auth = {
       this.user = user;
       splash.classList.add('hidden');
       this.showApp();
+      this.applyPerfMode();
       app.init();
       return;
     } catch {
@@ -220,6 +221,7 @@ const auth = {
       const res = await api.post('/api/login', { username, password, remember });
       this.user = res.user;
       this.showApp();
+      this.applyPerfMode();
       app.init();
     } catch (e) {
       errEl.textContent = e.message || 'Error al iniciar sesión';
@@ -245,6 +247,7 @@ const auth = {
       const res = await api.post('/api/register', { username, email, password, password_confirmation: confirm });
       this.user = res.user;
       this.showApp();
+      this.applyPerfMode();
       app.init();
     } catch (e) {
       errEl.textContent = e.message || 'Error al registrarse';
@@ -258,6 +261,19 @@ const auth = {
     } catch { /* ignore */ }
     this.user = null;
     this.showWelcome();
+  },
+  applyPerfMode() {
+    const user = this.user;
+    if (!user) return;
+    if (user.perf_mode === true) {
+      document.body.classList.add('perf-mode');
+      togglePerfIcon(true);
+    } else if (user.perf_mode === false) {
+      document.body.classList.remove('perf-mode');
+      togglePerfIcon(false);
+    } else {
+      setTimeout(() => modals.open('modal-perf-first'), 500);
+    }
   },
 };
 const modals = {
@@ -361,18 +377,25 @@ const cash = {
     if (this.total <= 0) { ui.toast('Cuenta el efectivo primero'); return; }
     const note = document.getElementById('recon-note').value.trim();
     if (!confirm('¿Registrar reconciliación por ' + ui.formatMoney(this.total) + '?')) return;
+    const btn = document.getElementById('btn-reconcile');
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    const data = { counted: this.total, note };
+    if (!app._idemKey) {
+      app._idemKey = await _idempotencyHash(data);
+    }
+    data.idempotency_key = app._idemKey;
     try {
-      document.getElementById('btn-reconcile').disabled = true;
-      document.getElementById('btn-reconcile').style.opacity = '0.5';
-      await api.post('/api/reconciliation', { counted: this.total, note });
+      await api.post('/api/reconciliation', data);
+      app._idemKey = null;
       ui.toast('Reconciliación registrada');
       document.getElementById('recon-note').value = '';
       await app.loadData();
       await this.loadHistory();
     } catch (e) { ui.toast('Error: ' + e.message); }
     finally {
-      document.getElementById('btn-reconcile').disabled = false;
-      document.getElementById('btn-reconcile').style.opacity = '1';
+      btn.disabled = false;
+      btn.style.opacity = '1';
     }
   },
   async loadHistory() {
@@ -386,7 +409,7 @@ const cash = {
       }
       container.innerHTML = items.map(r => {
         const isSurplus = r.amount >= 0;
-        const date = new Date(r.date + 'T12:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const date = new Date(r.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: '2-digit' });
         return `
           <div class="recon-row">
             <div class="recon-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
@@ -421,7 +444,7 @@ function initCharts() {
 function initAnalyticsCharts() {
   if (typeof Chart === 'undefined') {
     const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+    s.src = '/js/chart.min.js';
     s.onload = () => { createCharts(); applyCachedChartData(); };
     document.head.appendChild(s);
     return;
@@ -712,12 +735,26 @@ function renderForecast(data) {
     </div>`;
 }
 
+async function _idempotencyHash(data) {
+  const parts = [
+    data.date ?? '', data.amount ?? '', data.type ?? '',
+    data.category_id ?? '', data.note ?? '', data.counted ?? '',
+    Date.now(),
+    String.fromCharCode(97 + Math.random() * 26)
+  ];
+  const buf = await crypto.subtle.digest('SHA-256',
+    new TextEncoder().encode(parts.join('|')));
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // ===== APP =====
 const app = {
   transactions: [], categories: [], month: '', typeFilter: 'all',
   currentPage: 1, lastPage: 1, loadingMore: false,
   editingTransactionId: null, editingCategoryId: null,
   searchQuery: '', _monthTimer: null,
+  _idemKey: null, _submitting: false,
   async init() {
     this.month = new Date().toISOString().slice(0, 7);
     cash.init(); initCharts();
@@ -885,8 +922,6 @@ const app = {
           <div class="cat-bar-fill" style="width:${Math.min(pct, 100)}%;background:${barColor}"></div>
         </div>`;
       }
-      const budgetBtn = isOwn ? `
-        <button class="budget-btn" data-category-id="${c.category_id}" style="background:none;border:none;color:var(--secondary);cursor:pointer;opacity:0.6;font-size:16px;font-weight:600;padding:10px 8px" title="Presupuesto">$</button>` : '';
       return `
       <div class="cat-card">
         <div class="cat-icon" style="background:${c.color}33;color:${c.color}">${getCategoryIcon(c.icon, c.color)}</div>
@@ -896,14 +931,16 @@ const app = {
           ${budgetHtml}
         </div>
         <div class="cat-amount" style="color:${c.color}">${ui.formatMoney(c.total)}</div>
-        ${budgetBtn}
         ${isOwn ? `
-        <button class="cat-edit" data-id="${c.category_id}" style="background:none;border:none;color:var(--secondary);cursor:pointer;opacity:0.6">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-        </button>
-        <button class="cat-delete" data-id="${c.category_id}" style="background:none;border:none;color:var(--red);cursor:pointer;opacity:0.6">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-        </button>` : ''}
+        <div class="cat-actions">
+          <button class="budget-btn" data-category-id="${c.category_id}" style="background:none;border:none;color:var(--secondary);cursor:pointer;opacity:0.6;font-size:16px;font-weight:600;padding:10px 8px" title="Presupuesto">$</button>
+          <button class="cat-edit" data-id="${c.category_id}" style="background:none;border:none;color:var(--secondary);cursor:pointer;opacity:0.6">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          </button>
+          <button class="cat-delete" data-id="${c.category_id}" style="background:none;border:none;color:var(--red);cursor:pointer;opacity:0.6">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+        </div>` : ''}
       </div>`;
     }).join('');
     container.querySelectorAll('.budget-btn').forEach(btn => {
@@ -978,7 +1015,7 @@ const app = {
       const dateObj = new Date(d.date + 'T12:00:00');
       const isToday = d.date === new Date().toISOString().split('T')[0];
       const isYesterday = d.date === new Date(Date.now() - 86400000).toISOString().split('T')[0];
-      const dayLabel = isToday ? 'Hoy' : isYesterday ? 'Ayer' : dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+      const dayLabel = isToday ? 'Hoy' : isYesterday ? 'Ayer' : dateObj.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'long' });
 
       return `
       <div class="day-card ${dayClass(d)}">
@@ -1064,8 +1101,13 @@ document.getElementById('timeline-container').addEventListener('click', async (e
     const tx = app.transactions.find(t => t.id == id);
     if (!tx) return;
     app.editingTransactionId = id;
+    app._idemKey = null;
+    app._submitting = false;
+    const addBtn = document.getElementById('btn-add-transaction');
+    addBtn.disabled = false;
+    addBtn.style.opacity = '1';
     document.getElementById('modal-transaction').querySelector('.modal-title').textContent = 'Editar Transacción';
-    document.getElementById('btn-add-transaction').textContent = 'Guardar';
+    addBtn.textContent = 'Guardar';
     document.getElementById('tx-date').value = tx.date.split('T')[0];
     document.getElementById('tx-type').value = tx.type;
     document.getElementById('tx-amount').value = tx.amount;
@@ -1111,8 +1153,13 @@ document.getElementById('category-list').addEventListener('click', async (e) => 
 document.getElementById('sel-transaction').addEventListener('click', () => {
   modals.closeAll();
   app.editingTransactionId = null;
+  app._idemKey = null;
+  app._submitting = false;
+  const addBtn = document.getElementById('btn-add-transaction');
+  addBtn.disabled = false;
+  addBtn.style.opacity = '1';
   document.getElementById('modal-transaction').querySelector('.modal-title').textContent = 'Nueva Transacción';
-  document.getElementById('btn-add-transaction').textContent = 'Agregar';
+  addBtn.textContent = 'Agregar';
   document.getElementById('tx-amount').value = '';
   document.getElementById('tx-note').value = '';
   const today = new Date().toISOString().split('T')[0];
@@ -1137,6 +1184,7 @@ document.getElementById('sel-category').addEventListener('click', () => {
 });
 
 document.getElementById('btn-add-transaction').addEventListener('click', async () => {
+  if (app._submitting) return;
   const data = {
     date: document.getElementById('tx-date').value,
     amount: parseFloat(document.getElementById('tx-amount').value),
@@ -1147,6 +1195,14 @@ document.getElementById('btn-add-transaction').addEventListener('click', async (
   if (!data.date || !data.amount || data.amount <= 0) { ui.toast('Completa los campos requeridos'); return; }
   if (data.note.length > 255) { ui.toast('La nota no puede exceder 255 caracteres'); return; }
   if (data.date > new Date().toISOString().split('T')[0]) { ui.toast('La fecha no puede ser futura'); return; }
+  app._submitting = true;
+  const addBtn = document.getElementById('btn-add-transaction');
+  addBtn.disabled = true;
+  addBtn.style.opacity = '0.5';
+  if (!app._idemKey) {
+    app._idemKey = await _idempotencyHash(data);
+  }
+  data.idempotency_key = app._idemKey;
   try {
     if (app.editingTransactionId) {
       await api.patch(`/api/transactions/${app.editingTransactionId}`, data);
@@ -1156,11 +1212,18 @@ document.getElementById('btn-add-transaction').addEventListener('click', async (
       await api.post('/api/transactions', data);
       ui.toast('Transacción agregada');
     }
+    app._idemKey = null;
+    app._submitting = false;
     document.getElementById('tx-amount').value = '';
     document.getElementById('tx-note').value = '';
     await app.loadData();
     modals.closeAll();
-  } catch (e) { ui.toast('Error: ' + e.message); }
+  } catch (e) {
+    app._submitting = false;
+    addBtn.disabled = false;
+    addBtn.style.opacity = '1';
+    ui.toast('Error: ' + e.message);
+  }
 });
 
 document.getElementById('btn-add-category').addEventListener('click', async () => {
@@ -1296,7 +1359,7 @@ document.getElementById('heatmap-next').addEventListener('click', () => {
 // Currency
 document.getElementById('currency-select').addEventListener('change', (e) => {
   currentCurrency = e.target.value;
-  localStorage.setItem('ledger_currency', currentCurrency);
+  sessionStorage.setItem('ledger_currency', currentCurrency);
   app.loadData();
 });
 
@@ -1335,6 +1398,127 @@ document.getElementById('link-show-login')?.addEventListener('click', () => auth
 // Auth submit buttons (replaced inline onclick)
 document.getElementById('btn-login').addEventListener('click', () => auth.login());
 document.getElementById('btn-register').addEventListener('click', () => auth.register());
+
+// ===== CENTRALIZED EVENT DELEGATION =====
+
+// Scroll-to-top button
+(function() {
+  const btn = document.getElementById('scroll-top-btn');
+  const content = document.querySelector('.content');
+  if (!btn || !content) return;
+  content.addEventListener('scroll', () => {
+    const scrollTop = content.scrollTop;
+    const scrollHeight = content.scrollHeight - content.clientHeight;
+    const pct = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+    btn.classList.toggle('visible', pct > 0.3);
+  }, { passive: true });
+  btn.addEventListener('click', () => {
+    content.scrollTo({ top: 0 });
+  });
+})();
+
+function togglePerfIcon(enabled) {
+  const btn = document.getElementById('perf-toggle');
+  if (!btn) return;
+  btn.style.color = enabled ? 'var(--orange)' : 'var(--secondary)';
+  const icon = document.getElementById('perf-icon');
+  if (icon) {
+    icon.style.transform = enabled ? 'rotate(45deg)' : '';
+    icon.style.transition = 'transform .3s ease';
+  }
+}
+
+function updateThemeIcons() {
+  const isLite = document.documentElement.getAttribute('data-theme') === 'lite';
+  const iconGlassy = document.getElementById('theme-icon-glassy');
+  const iconLite = document.getElementById('theme-icon-lite');
+  if (iconGlassy) iconGlassy.style.display = isLite ? 'none' : '';
+  if (iconLite) iconLite.style.display = isLite ? '' : 'none';
+}
+
+// Scroll progress bar
+(function() {
+  const content = document.querySelector('.content');
+  const progress = document.querySelector('.scroll-progress');
+  if (!content || !progress) return;
+  function update() {
+    const scrollTop = content.scrollTop;
+    const scrollHeight = content.scrollHeight - content.clientHeight;
+    progress.style.setProperty('--scroll', scrollHeight > 0 ? scrollTop / scrollHeight : 0);
+  }
+  content.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update, { passive: true });
+  update();
+})();
+
+// Global click delegation for theme-toggle, perf-toggle, perf modal, and theme icon init
+document.addEventListener('click', async (e) => {
+  const target = e.target;
+
+  // Theme toggle
+  const themeBtn = target.closest('#theme-toggle');
+  if (themeBtn) {
+    const isLite = document.documentElement.getAttribute('data-theme') === 'lite';
+    const newTheme = isLite ? 'glassy' : 'lite';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('ledger_theme', newTheme);
+    updateThemeIcons();
+    if (typeof ui !== 'undefined' && ui.toast) {
+      ui.toast(newTheme === 'lite' ? 'Modo Lite activado' : 'Modo Glassy activado', 2000);
+    }
+    return;
+  }
+
+  // Perf toggle
+  const perfBtn = target.closest('#perf-toggle');
+  if (perfBtn) {
+    if (typeof auth !== 'undefined' && auth.user && auth.user.id) {
+      const newVal = !document.body.classList.contains('perf-mode');
+      try {
+        const res = await api.patch('/api/user/perf-mode', { perf_mode: newVal });
+        document.body.classList.toggle('perf-mode', res.perf_mode);
+        togglePerfIcon(res.perf_mode);
+        auth.user.perf_mode = res.perf_mode;
+        if (typeof ui !== 'undefined' && ui.toast) {
+          ui.toast(res.perf_mode ? 'Modo rendimiento activado' : 'Efectos visuales restaurados', 2000);
+        }
+      } catch { /* ignore */ }
+    } else {
+      const newVal = !document.body.classList.contains('perf-mode');
+      document.body.classList.toggle('perf-mode', newVal);
+      togglePerfIcon(newVal);
+    }
+    return;
+  }
+
+  // Perf modal — yes
+  const perfYes = target.closest('#perf-yes');
+  if (perfYes) {
+    try {
+      const res = await api.patch('/api/user/perf-mode', { perf_mode: true });
+      document.body.classList.add('perf-mode');
+      togglePerfIcon(true);
+      if (auth.user) auth.user.perf_mode = true;
+      modals.close('modal-perf-first');
+      ui.toast('Modo rendimiento activado');
+    } catch { modals.close('modal-perf-first'); }
+    return;
+  }
+
+  // Perf modal — no
+  const perfNo = target.closest('#perf-no');
+  if (perfNo) {
+    try {
+      await api.patch('/api/user/perf-mode', { perf_mode: false });
+      if (auth.user) auth.user.perf_mode = false;
+    } catch { /* ignore */ }
+    modals.close('modal-perf-first');
+    return;
+  }
+});
+
+// Initialize theme icons on page load
+updateThemeIcons();
 
 // Remember checkbox toggle
 document.getElementById('login-remember').addEventListener('change', (e) => {

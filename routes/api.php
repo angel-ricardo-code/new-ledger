@@ -26,6 +26,7 @@ Route::middleware(['throttle:api', 'auth:sanctum'])->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout']);
 Route::get('/user', [AuthController::class, 'user']);
+Route::patch('/user/perf-mode', [AuthController::class, 'updatePerfMode']);
 
 Route::get('/transactions', [TransactionController::class, 'index']);
 Route::post('/transactions', [TransactionController::class, 'store']);

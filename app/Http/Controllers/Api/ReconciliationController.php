@@ -12,6 +12,17 @@ class ReconciliationController extends Controller
 {
     public function store(StoreReconciliationRequest $request): JsonResponse
     {
+        $key = $request->validated()['idempotency_key'] ?? null;
+
+        if ($key) {
+            $existing = Transaction::where('user_id', auth()->id())
+                ->where('idempotency_key', $key)->first();
+            if ($existing) {
+                return response()->json($existing, 200);
+            }
+        }
+
+        $request->validate(['date' => ['nullable', 'date', 'before_or_equal:today']]);
         $all = Transaction::where('user_id', auth()->id())->whereIn('type', ['income', 'expense', 'reconciliation'])->get();
         $expected = $all->sum(fn($t) => match ($t->type) {
             'income' => $t->amount,
@@ -22,7 +33,7 @@ class ReconciliationController extends Controller
 
         $difference = (float) $request->counted - $expected;
 
-        if ($difference == 0) {
+        if (abs($difference) < 0.01) {
             return response()->json([
                 'message' => 'El balance coincide exactamente',
                 'difference' => 0,
@@ -35,11 +46,12 @@ class ReconciliationController extends Controller
         }
 
         $transaction = Transaction::create([
-            'date' => now()->format('Y-m-d'),
+            'date' => $request->input('date', now()->format('Y-m-d')),
             'amount' => $difference,
             'type' => 'reconciliation',
             'category_id' => null,
             'note' => $note,
+            'idempotency_key' => $key,
         ]);
 
         $month = now()->format('Y-m');
