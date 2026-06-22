@@ -57,7 +57,7 @@ class BudgetController extends Controller
             ['limit' => $data['limit']]
         );
 
-        $this->forgetDashboardCache($request->input('month'));
+        $this->forgetDashboardCache();
 
         return response()->json([
             'id' => $budget->id,
@@ -76,10 +76,10 @@ class BudgetController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    private function forgetDashboardCache(string $month = null): void
+    private function forgetDashboardCache(): void
     {
-        $month ??= date('Y-m');
         $suffix = '_user_' . auth()->id();
+        $month = request('month', date('Y-m'));
         Cache::forget('dashboard_' . $month . $suffix);
         $prevMonth = date('Y-m', strtotime($month . '-01 -1 month'));
         Cache::forget('dashboard_' . $prevMonth . $suffix);

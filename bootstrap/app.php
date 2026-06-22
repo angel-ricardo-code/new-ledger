@@ -18,8 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         ]);
         $middleware->statefulApi();
-        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         $middleware->web(append: [
+            \App\Http\Middleware\ContentSecurityPolicy::class,
+        ]);
+        $middleware->api(append: [
             \App\Http\Middleware\ContentSecurityPolicy::class,
         ]);
     })

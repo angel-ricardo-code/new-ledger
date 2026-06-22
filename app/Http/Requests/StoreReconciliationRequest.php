@@ -16,7 +16,6 @@ class StoreReconciliationRequest extends FormRequest
         return [
             'counted' => ['required', 'numeric', 'min:0'],
             'note' => ['nullable', 'string', 'max:255'],
-            'idempotency_key' => ['nullable', 'string', 'size:64'],
         ];
     }
 

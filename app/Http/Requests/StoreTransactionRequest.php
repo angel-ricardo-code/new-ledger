@@ -16,7 +16,7 @@ class StoreTransactionRequest extends FormRequest
     {
         return [
             'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'amount' => ['required', 'numeric', 'gt:0', 'max:999999999.99'],
+            'amount' => ['required', 'numeric', 'gt:0'],
             'type' => ['required', 'in:income,expense'],
             'category_id' => [
                 'nullable',
@@ -33,7 +33,6 @@ class StoreTransactionRequest extends FormRequest
                 },
             ],
             'note' => ['nullable', 'string', 'max:255'],
-            'idempotency_key' => ['nullable', 'string', 'size:64'],
         ];
     }
 
