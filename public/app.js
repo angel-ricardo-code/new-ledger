@@ -53,6 +53,16 @@ const api = {
     if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
     return res.json();
   },
+  async put(url, data) {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) { const text = await res.text(); throw new Error(this.parseError(res, text)); }
+    return res.json();
+  },
   async patch(url, data) {
     const res = await fetch(url, {
       method: 'PATCH',
@@ -430,18 +440,18 @@ const cash = {
     }
   },
   openRatesModal() {
-    const usd = this.rates?.USD?.rate_to_cup || 24;
-    const eur = this.rates?.EUR?.rate_to_cup || 26;
-    const mxn = this.rates?.MXN?.rate_to_cup || 1.2;
-    document.getElementById('rate-usd').value = usd;
-    document.getElementById('rate-eur').value = eur;
-    document.getElementById('rate-mxn').value = mxn;
+    const usd = (this.rates?.USD?.rate_to_cup || 24);
+    const eur = (this.rates?.EUR?.rate_to_cup || 26);
+    const mxn = (this.rates?.MXN?.rate_to_cup || 1.2);
+    document.getElementById('rate-usd').value = parseFloat(usd).toFixed(2);
+    document.getElementById('rate-eur').value = parseFloat(eur).toFixed(2);
+    document.getElementById('rate-mxn').value = parseFloat(mxn).toFixed(2);
     modals.open('modal-rates');
   },
   async saveRates() {
-    const usd = parseFloat(document.getElementById('rate-usd').value);
-    const eur = parseFloat(document.getElementById('rate-eur').value);
-    const mxn = parseFloat(document.getElementById('rate-mxn').value);
+    const usd = parseFloat(parseFloat(document.getElementById('rate-usd').value).toFixed(2));
+    const eur = parseFloat(parseFloat(document.getElementById('rate-eur').value).toFixed(2));
+    const mxn = parseFloat(parseFloat(document.getElementById('rate-mxn').value).toFixed(2));
     if (!usd || !eur || !mxn) { ui.toast('Completa todas las tasas'); return; }
     try {
       const rates = [
@@ -1518,3 +1528,43 @@ document.getElementById('check-remember').addEventListener('click', () => {
 ['reg-username','reg-email','reg-password','reg-password-confirm'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') auth.register(); });
 });
+
+// Scroll progress bar
+(function() {
+  var content = document.querySelector('.content');
+  var progress = document.querySelector('.scroll-progress');
+  if (!content || !progress) return;
+  function update() {
+    var scrollTop = content.scrollTop;
+    var scrollHeight = content.scrollHeight - content.clientHeight;
+    var pct = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
+    progress.style.setProperty('--scroll', pct.toFixed(4));
+  }
+  content.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update, { passive: true });
+  update();
+})();
+
+// Theme toggle
+(function() {
+  const toggleBtn = document.getElementById('theme-toggle');
+  if (!toggleBtn) return;
+  const iconGlassy = document.getElementById('theme-icon-glassy');
+  const iconLite = document.getElementById('theme-icon-lite');
+  function updateIcons() {
+    const isLite = document.documentElement.getAttribute('data-theme') === 'lite';
+    if (iconGlassy) iconGlassy.style.display = isLite ? 'none' : '';
+    if (iconLite) iconLite.style.display = isLite ? '' : 'none';
+  }
+  updateIcons();
+  toggleBtn.addEventListener('click', function() {
+    const isLite = document.documentElement.getAttribute('data-theme') === 'lite';
+    const newTheme = isLite ? 'glassy' : 'lite';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('ledger_theme', newTheme);
+    updateIcons();
+    if (typeof ui !== 'undefined' && ui.toast) {
+      ui.toast(newTheme === 'lite' ? 'Modo Lite activado' : 'Modo Glassy activado', 2000);
+    }
+  });
+})();

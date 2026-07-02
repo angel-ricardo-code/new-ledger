@@ -12,7 +12,8 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ledger</title>
+<title>Spplitt</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A84FF' stroke-width='2'%3E%3Cpath d='M3 3v18h18'/%3E%3Cpath d='M18 17V9'/%3E%3Cpath d='M13 17V5'/%3E%3Cpath d='M8 17v-3'/%3E%3C/svg%3E">
 <style>
 
   /* ═══════════════════════════════════════════════════════════
@@ -746,11 +747,10 @@
 
   .load-more-indicator { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 0; gap: 12px; }
   .bill-stack { position: relative; width: 80px; height: 100px; }
-  .bill { position: absolute; width: 70px; height: 34px; left: 5px; bottom: 0; background: linear-gradient(135deg, #66BB6A, #2E7D32); border-radius: 4px; border: 1px solid #1B5E20; transform-origin: center bottom; animation: billDrop 0.5s ease-out forwards; animation-delay: calc(var(--i) * 0.12s); opacity: 0; }
-  .bill::after { content: '$'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.25); font-size: 18px; font-weight: bold; }
+  .bill { position: absolute; width: 70px; height: 34px; left: 5px; bottom: 0; background: transparent; border-radius: 4px; border: 3px solid #1B5E20; transform-origin: center bottom; animation: billDrop 0.5s ease-out calc(var(--i) * 0.12s) forwards, billShuffle 1.2s ease-in-out calc(0.6s + var(--i) * 0.12s) infinite; opacity: 0; }
+  .bill::after { content: '$'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgb(255, 255, 255); font-size: 18px; font-weight: bold; }
   @keyframes billDrop { 0% { transform: translateY(-60px) rotate(-10deg); opacity: 0; } 70% { transform: translateY(0) rotate(3deg); opacity: 1; } 85% { transform: translateY(-3px) rotate(0deg); } 100% { transform: translateY(0) rotate(0deg); opacity: 1; } }
-  .bill:nth-child(odd) { animation: billDrop 0.5s ease-out calc(var(--i) * 0.12s) forwards, billShift 2s ease-in-out calc(var(--i) * 0.12s + 0.5s) infinite alternate; }
-  @keyframes billShift { 0% { transform: translateY(0) rotate(0deg); } 100% { transform: translateY(0) rotate(2deg); } }
+  @keyframes billShuffle { 0% { transform: translateY(0) rotate(0deg) translateX(0); z-index: 1; } 15% { transform: translateY(-8px) rotate(-2deg) translateX(-4px); z-index: 5; } 35% { transform: translateY(-14px) rotate(2deg) translateX(10px); z-index: 10; } 55% { transform: translateY(-5px) rotate(-1deg) translateX(-6px); z-index: 6; } 75% { transform: translateY(-2px) rotate(1deg) translateX(3px); z-index: 3; } 100% { transform: translateY(0) rotate(0deg) translateX(0); z-index: 1; } }
   .load-more-text { font-size: 12px; color: var(--secondary); font-weight: 500; animation: pulse 1.5s ease-in-out infinite; }
   @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
 
@@ -835,9 +835,9 @@
   .tx-row button { padding: 12px 14px; margin-left: 8px; }
   .cat-card button { padding: 10px; }
 
-  
+
   .btn-view-all { background:var(--elevated);border:none;border-radius:8px;color:var(--accent);padding:8px 16px;font-family:inherit;font-size:13px;cursor:pointer;width:100%;margin-top:8px; }
-  .heatmap-grid { display:grid;gap:2px;overflow-x:auto; }
+  .heatmap-grid { display:grid;gap:2px;overflow-x:auto; padding-bottom: 1em }
   .heatmap-grid .ml { font-size:9px;color:var(--secondary);white-space:nowrap;padding-left:2px; }
   .heatmap-grid .dl { font-size:9px;color:var(--secondary);line-height:14px;text-align:right;padding-right:4px; }
   .heatmap-grid .cell { width:14px;height:14px;border-radius:2px;background:var(--elevated); }
@@ -1535,7 +1535,7 @@
   }
 
   /* ── Responsive tweaks ── */
-  
+
 
 
   /* ═══════════════════════════════════════════════════════════
@@ -2097,7 +2097,7 @@
   }
 
   /* ── 23. RESPONSIVE DOCK TAB BAR ADJUSTMENTS ── */
-  
+
 
   /* ── 24. SCROLLBAR PREMIUM ── */
   .content::-webkit-scrollbar {
@@ -3061,7 +3061,7 @@
             <div class="bill" style="--i:3"></div>
             <div class="bill" style="--i:4"></div>
           </div>
-          <span class="load-more-text">Apilando billetes...</span>
+          <span class="load-more-text">Cargando transacciones anteriores...</span>
         </div>
       </div>
     </div>
@@ -3452,9 +3452,9 @@
     <div class="modal-sheet">
       <div class="modal-header"><div class="modal-title">Tasas de Cambio</div><button class="modal-close" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
       <p style="font-size:14px;color:var(--secondary);margin-bottom:16px">Define cuántos CUP equivalen a cada moneda.</p>
-      <div class="form-group"><label>1 USD = ? CUP</label><input type="number" id="rate-usd" step="0.000001" min="0.000001" placeholder="24.000000" style="font-size:18px;font-weight:600"></div>
-      <div class="form-group"><label>1 EUR = ? CUP</label><input type="number" id="rate-eur" step="0.000001" min="0.000001" placeholder="26.000000" style="font-size:18px;font-weight:600"></div>
-      <div class="form-group"><label>1 MXN = ? CUP</label><input type="number" id="rate-mxn" step="0.000001" min="0.000001" placeholder="1.200000" style="font-size:18px;font-weight:600"></div>
+      <div class="form-group"><label>1 USD = ? CUP</label><input type="number" id="rate-usd" step="0.01" min="0.01" placeholder="24.00" style="font-size:18px;font-weight:600"></div>
+      <div class="form-group"><label>1 EUR = ? CUP</label><input type="number" id="rate-eur" step="0.01" min="0.01" placeholder="26.00" style="font-size:18px;font-weight:600"></div>
+      <div class="form-group"><label>1 MXN = ? CUP</label><input type="number" id="rate-mxn" step="0.01" min="0.01" placeholder="1.20" style="font-size:18px;font-weight:600"></div>
       <div class="modal-actions">
         <button class="btn-secondary" data-close>Cancelar</button>
         <button class="btn-primary" id="btn-save-rates">Guardar</button>
@@ -3466,58 +3466,5 @@
 
 <script src="app.js"></script>
 
-<script>
-  /* Scroll Progress Bar — seguro, no toca app.js */
-  (function() {
-    var content = document.querySelector('.content');
-    var progress = document.querySelector('.scroll-progress');
-    if (!content || !progress) return;
-    function update() {
-      var scrollTop = content.scrollTop;
-      var scrollHeight = content.scrollHeight - content.clientHeight;
-      var pct = scrollHeight > 0 ? scrollTop / scrollHeight : 0;
-      progress.style.setProperty('--scroll', pct.toFixed(4));
-    }
-    content.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update, { passive: true });
-    update();
-  })();
-</script>
-
-
-<script>
-  /* Theme Toggle Handler */
-  (function() {
-    const toggleBtn = document.getElementById('theme-toggle');
-    if (!toggleBtn) return;
-
-    const iconGlassy = document.getElementById('theme-icon-glassy');
-    const iconLite = document.getElementById('theme-icon-lite');
-
-    function updateIcons() {
-      const isLite = document.documentElement.getAttribute('data-theme') === 'lite';
-      if (iconGlassy) iconGlassy.style.display = isLite ? 'none' : '';
-      if (iconLite) iconLite.style.display = isLite ? '' : 'none';
-    }
-
-    // Set initial state
-    updateIcons();
-
-    toggleBtn.addEventListener('click', function() {
-      const isLite = document.documentElement.getAttribute('data-theme') === 'lite';
-      const newTheme = isLite ? 'glassy' : 'lite';
-
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('ledger_theme', newTheme);
-
-      updateIcons();
-
-      // Optional: show toast
-      if (typeof ui !== 'undefined' && ui.toast) {
-        ui.toast(newTheme === 'lite' ? 'Modo Lite activado' : 'Modo Glassy activado', 2000);
-      }
-    });
-  })();
-</script>
 </body>
 </html>
