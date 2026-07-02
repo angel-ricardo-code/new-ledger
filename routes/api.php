@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\CurrencyRateController;
 use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\ReconciliationController;
 use App\Http\Controllers\Api\TransactionController;
@@ -54,5 +55,8 @@ Route::get('/analytics/heatmap', [AnalyticsController::class, 'heatmap']);
 Route::get('/analytics/forecast', [AnalyticsController::class, 'forecast']);
 
 Route::get('/export', [ExportController::class, 'report']);
+
+Route::get('/currency-rates', [CurrencyRateController::class, 'index']);
+Route::put('/currency-rates', [CurrencyRateController::class, 'update']);
 
 });

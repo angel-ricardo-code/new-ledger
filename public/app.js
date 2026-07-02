@@ -83,6 +83,14 @@ const api = {
 
 const CURRENCIES = { CUP: 'CUP', USD: 'USD', EUR: 'EUR', MXN: 'MXN' };
 let currentCurrency = localStorage.getItem('ledger_currency') || 'CUP';
+let currentRate = 1;
+
+const DENOMINATIONS = {
+  CUP: [1000, 500, 200, 100, 50, 20, 10, 5, 3, 1],
+  USD: [100, 50, 20, 10, 5, 2, 1, 0.25, 0.10, 0.05, 0.01],
+  EUR: [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.50, 0.20, 0.10, 0.05, 0.02, 0.01],
+  MXN: [1000, 500, 200, 100, 50, 20, 10, 5, 2, 1, 0.50, 0.20, 0.10, 0.05],
+};
 
 const ui = {
   _toastTimer: null,
@@ -101,7 +109,8 @@ const ui = {
     clearTimeout(this._toastTimer);
   },
   formatMoney(amount) {
-    return parseFloat(amount).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currentCurrency;
+    const converted = parseFloat(amount) * currentRate;
+    return converted.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + currentCurrency;
   },
   formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -313,34 +322,39 @@ document.querySelectorAll('.segment').forEach(seg => {
 
 // ===== CASH =====
 const cash = {
-  denominations: [1000, 500, 200, 100, 50, 20, 10, 5, 3, 1],
   total: 0,
-  systemBalance: 0,
+  _balanceCUP: 0,
+  rates: null,
   init() {
-    const grid = document.getElementById('denom-grid');
-    grid.innerHTML = this.denominations.map(d => `
-      <div class="denom-item"><label>${d} CUP</label><input type="number" min="0" value="0" data-denom="${d}" class="denom-input"></div>
-    `).join('');
-    grid.querySelectorAll('.denom-input').forEach(inp => inp.addEventListener('input', () => this.calculate()));
+    this.renderDenominations();
     document.getElementById('btn-reconcile').addEventListener('click', () => this.reconcile());
     document.getElementById('cash-reset').addEventListener('click', () => this.reset());
   },
+  renderDenominations() {
+    const grid = document.getElementById('denom-grid');
+    const dens = DENOMINATIONS[currentCurrency] || DENOMINATIONS.CUP;
+    grid.innerHTML = dens.map(d => `
+      <div class="denom-item"><label>${d} ${currentCurrency}</label><input type="number" min="0" value="0" step="any" data-denom="${d}" class="denom-input"></div>
+    `).join('');
+    grid.querySelectorAll('.denom-input').forEach(inp => inp.addEventListener('input', () => this.calculate()));
+  },
   calculate() {
-    this.total = 0;
+    let totalDisplay = 0;
     document.querySelectorAll('.denom-input').forEach(inp => {
-      this.total += parseFloat(inp.value || 0) * parseFloat(inp.dataset.denom);
+      totalDisplay += parseFloat(inp.value || 0) * parseFloat(inp.dataset.denom);
     });
+    this.total = currentCurrency === 'CUP' ? totalDisplay : totalDisplay / currentRate;
     document.getElementById('cash-counted').textContent = ui.formatMoney(this.total);
     this.updateDiff();
   },
   updateDiff() {
-    const diff = this.total - this.systemBalance;
+    const diff = this._balanceCUP - this.total;
     const el = document.getElementById('cash-diff');
     el.textContent = (diff >= 0 ? '+' : '') + ui.formatMoney(Math.abs(diff));
     el.style.color = diff === 0 ? 'var(--green)' : Math.abs(diff) < 0.01 ? 'var(--green)' : 'var(--orange)';
   },
   setBalance(balance) {
-    this.systemBalance = balance;
+    this._balanceCUP = balance;
     document.getElementById('cash-system-balance').textContent = ui.formatMoney(balance);
     this.updateDiff();
   },
@@ -398,6 +412,41 @@ const cash = {
           </div>`;
       }).join('');
     } catch (e) { /* silently fail */ }
+  },
+  async loadRates() {
+    try {
+      const response = await api.get('/api/currency-rates');
+      this.rates = response;
+    } catch {
+      this.rates = null;
+    }
+  },
+  openRatesModal() {
+    const usd = this.rates?.USD?.rate_to_cup || 24;
+    const eur = this.rates?.EUR?.rate_to_cup || 26;
+    const mxn = this.rates?.MXN?.rate_to_cup || 1.2;
+    document.getElementById('rate-usd').value = usd;
+    document.getElementById('rate-eur').value = eur;
+    document.getElementById('rate-mxn').value = mxn;
+    modals.open('modal-rates');
+  },
+  async saveRates() {
+    const usd = parseFloat(document.getElementById('rate-usd').value);
+    const eur = parseFloat(document.getElementById('rate-eur').value);
+    const mxn = parseFloat(document.getElementById('rate-mxn').value);
+    if (!usd || !eur || !mxn) { ui.toast('Completa todas las tasas'); return; }
+    try {
+      const rates = [
+        { currency: 'USD', rate_to_cup: usd },
+        { currency: 'EUR', rate_to_cup: eur },
+        { currency: 'MXN', rate_to_cup: mxn },
+      ];
+      this.rates = await api.put('/api/currency-rates', { rates });
+      currentRate = currentCurrency === 'CUP' ? 1 : 1 / (this.rates[currentCurrency]?.rate_to_cup || 1);
+      modals.closeAll();
+      ui.toast('Tasas actualizadas');
+      app.renderAll();
+    } catch (e) { ui.toast('Error: ' + e.message); }
   },
   reset() {
     document.querySelectorAll('.denom-input').forEach(inp => inp.value = '0');
@@ -662,7 +711,7 @@ function renderForecast(data) {
           </div>
           <div class="forecast-amount-row forecast-animate-count forecast-delay-2">
             <span class="forecast-amount">${ui.formatMoney(next.predicted)}</span>
-            <span class="forecast-currency">CUP</span>
+            <span class="forecast-currency">${currentCurrency}</span>
           </div>
           <div class="forecast-confidence-section">
             <div class="forecast-confidence-labels">
@@ -718,6 +767,18 @@ const app = {
   currentPage: 1, lastPage: 1, loadingMore: false,
   editingTransactionId: null, editingCategoryId: null,
   searchQuery: '', _monthTimer: null,
+  renderAll() {
+    const dashboard = analyticsCache.dashboard;
+    if (dashboard) {
+      this.renderSummary(dashboard);
+      this.renderCategoryList(dashboard);
+      cash.setBalance(dashboard.balance);
+      cash.setGlobalStats(dashboard.global_balance, dashboard.monthly_avg);
+      renderKPIs(dashboard);
+    }
+    this.renderTimeline();
+    if (analyticsCache.top) renderTopTransactions(analyticsCache.top);
+  },
   async init() {
     this.month = new Date().toISOString().slice(0, 7);
     cash.init(); initCharts();
@@ -726,6 +787,8 @@ const app = {
     document.getElementById('tx-date').max = today;
     this.updateMonthLabels();
     document.getElementById('currency-select').value = currentCurrency;
+    await cash.loadRates();
+    currentRate = currentCurrency === 'CUP' ? 1 : 1 / ((cash.rates?.[currentCurrency]?.rate_to_cup) || 1);
     await this.loadData();
     await this.loadAnalyticsData();
     await cash.loadHistory();
@@ -1158,8 +1221,8 @@ document.getElementById('btn-add-transaction').addEventListener('click', async (
     }
     document.getElementById('tx-amount').value = '';
     document.getElementById('tx-note').value = '';
-    await app.loadData();
     modals.closeAll();
+    await app.loadData();
   } catch (e) { ui.toast('Error: ' + e.message); }
 });
 
@@ -1193,8 +1256,8 @@ document.getElementById('btn-add-category').addEventListener('click', async () =
     app.editingBudgetId = null;
     document.getElementById('cat-name').value = '';
     document.getElementById('cat-budget-limit').value = '';
-    await app.loadData();
     modals.closeAll();
+    await app.loadData();
   } catch (e) { ui.toast('Error: ' + e.message); }
 });
 
@@ -1293,11 +1356,23 @@ document.getElementById('heatmap-next').addEventListener('click', () => {
   loadHeatmap();
 });
 
+// Rates
+document.getElementById('btn-rates')?.addEventListener('click', () => cash.openRatesModal());
+document.getElementById('btn-save-rates')?.addEventListener('click', () => cash.saveRates());
+
 // Currency
-document.getElementById('currency-select').addEventListener('change', (e) => {
+document.getElementById('currency-select').addEventListener('change', async (e) => {
   currentCurrency = e.target.value;
   localStorage.setItem('ledger_currency', currentCurrency);
-  app.loadData();
+  if (currentCurrency === 'CUP') {
+    currentRate = 1;
+  } else {
+    const rate = cash.rates?.[currentCurrency]?.rate_to_cup;
+    currentRate = rate ? 1 / rate : 1;
+  }
+  cash.renderDenominations();
+  cash.reset();
+  app.renderAll();
 });
 
 // Swipe to edit on mobile

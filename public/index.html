@@ -3115,13 +3115,17 @@
     <!-- CAJA -->
     <div class="page" id="page-cash">
       <div class="page-header"><h1>Caja Chica</h1>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
         <select id="currency-select" style="background:var(--elevated);border:1px solid var(--separator);border-radius:8px;color:var(--text);padding:6px 10px;font-family:inherit;font-size:13px;outline:none">
           <option value="CUP">CUP</option>
           <option value="USD">USD</option>
           <option value="EUR">EUR</option>
           <option value="MXN">MXN</option>
         </select>
+        <button id="btn-rates" title="Ajustar tasas de cambio" style="background:var(--elevated);border:1px solid var(--separator);border-radius:8px;color:var(--text);padding:6px 10px;font-family:inherit;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          Tasas
+        </button>
       </div>
       </div>
 
@@ -3419,6 +3423,21 @@
         <button class="btn-secondary" id="btn-delete-budget" style="flex:0;color:var(--red);display:none">Eliminar</button>
         <button class="btn-secondary" data-close style="flex:1">Cancelar</button>
         <button class="btn-primary" id="btn-save-budget" style="flex:1">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: RATES ===== -->
+  <div class="modal-overlay" id="modal-rates">
+    <div class="modal-sheet">
+      <div class="modal-header"><div class="modal-title">Tasas de Cambio</div><button class="modal-close" data-close><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button></div>
+      <p style="font-size:14px;color:var(--secondary);margin-bottom:16px">Define cuántos CUP equivalen a cada moneda.</p>
+      <div class="form-group"><label>1 USD = ? CUP</label><input type="number" id="rate-usd" step="0.000001" min="0.000001" placeholder="24.000000" style="font-size:18px;font-weight:600"></div>
+      <div class="form-group"><label>1 EUR = ? CUP</label><input type="number" id="rate-eur" step="0.000001" min="0.000001" placeholder="26.000000" style="font-size:18px;font-weight:600"></div>
+      <div class="form-group"><label>1 MXN = ? CUP</label><input type="number" id="rate-mxn" step="0.000001" min="0.000001" placeholder="1.200000" style="font-size:18px;font-weight:600"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" data-close>Cancelar</button>
+        <button class="btn-primary" id="btn-save-rates">Guardar</button>
       </div>
     </div>
   </div>
