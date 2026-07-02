@@ -744,6 +744,16 @@
   .spinner { width: 32px; height: 32px; border: 3px solid var(--elevated); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; margin: 40px auto; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  .load-more-indicator { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 0; gap: 12px; }
+  .bill-stack { position: relative; width: 80px; height: 100px; }
+  .bill { position: absolute; width: 70px; height: 34px; left: 5px; bottom: 0; background: linear-gradient(135deg, #66BB6A, #2E7D32); border-radius: 4px; border: 1px solid #1B5E20; transform-origin: center bottom; animation: billDrop 0.5s ease-out forwards; animation-delay: calc(var(--i) * 0.12s); opacity: 0; }
+  .bill::after { content: '$'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.25); font-size: 18px; font-weight: bold; }
+  @keyframes billDrop { 0% { transform: translateY(-60px) rotate(-10deg); opacity: 0; } 70% { transform: translateY(0) rotate(3deg); opacity: 1; } 85% { transform: translateY(-3px) rotate(0deg); } 100% { transform: translateY(0) rotate(0deg); opacity: 1; } }
+  .bill:nth-child(odd) { animation: billDrop 0.5s ease-out calc(var(--i) * 0.12s) forwards, billShift 2s ease-in-out calc(var(--i) * 0.12s + 0.5s) infinite alternate; }
+  @keyframes billShift { 0% { transform: translateY(0) rotate(0deg); } 100% { transform: translateY(0) rotate(2deg); } }
+  .load-more-text { font-size: 12px; color: var(--secondary); font-weight: 500; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
   .toast.error { background: #FF453A; color: white; }
   .toast .toast-close { margin-left: 12px; cursor: pointer; opacity: 0.8; font-size: 18px; line-height: 1; padding: 0 4px; }
 
@@ -3043,6 +3053,16 @@
       </div>
       <div id="content-tx">
         <div class="timeline" id="timeline-container"></div>
+        <div id="tx-load-more" class="load-more-indicator" style="display:none">
+          <div class="bill-stack">
+            <div class="bill" style="--i:0"></div>
+            <div class="bill" style="--i:1"></div>
+            <div class="bill" style="--i:2"></div>
+            <div class="bill" style="--i:3"></div>
+            <div class="bill" style="--i:4"></div>
+          </div>
+          <span class="load-more-text">Apilando billetes...</span>
+        </div>
       </div>
     </div>
 

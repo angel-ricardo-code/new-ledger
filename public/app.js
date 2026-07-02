@@ -142,6 +142,13 @@ function hideLoading(id) {
   document.getElementById('content-' + id)?.style.removeProperty('display');
 }
 
+function showLoadMore() {
+  document.getElementById('tx-load-more').style.removeProperty('display');
+}
+function hideLoadMore() {
+  document.getElementById('tx-load-more').style.setProperty('display', 'none');
+}
+
 function checkPasswordStrength(pw) {
   const checks = {
     length: pw.length >= 8,
@@ -901,16 +908,15 @@ const app = {
     } catch (e) { ui.toastError('Error al cargar análisis: ' + e.message); }
   },
   async loadTransactions(reset = false) {
-    showLoading('tx');
     if (this.loadingMore) return;
     const cacheKey = reset ? 'transactions:' + this.month + ':' + this.typeFilter + (this.searchQuery ? ':q=' + this.searchQuery : '') : null;
     if (reset) {
+      showLoading('tx');
       const cached = cacheGet(cacheKey);
       if (cached) {
         this.transactions = cached.transactions;
         this.currentPage = cached.currentPage;
         this.lastPage = cached.lastPage;
-        this.loadingMore = false;
         this.renderTimeline();
         hideLoading('tx');
         return;
@@ -918,8 +924,13 @@ const app = {
       this.transactions = [];
       this.currentPage = 1;
       this.lastPage = 1;
+    } else {
+      showLoadMore();
     }
-    if (this.currentPage > this.lastPage) return;
+    if (this.currentPage > this.lastPage) {
+      if (!reset) hideLoadMore();
+      return;
+    }
     this.loadingMore = true;
     try {
       const perPage = reset ? 500 : 20;
@@ -936,7 +947,11 @@ const app = {
       }
       this.renderTimeline();
     } catch (e) { ui.toastError('Error al cargar transacciones: ' + e.message); }
-    finally { this.loadingMore = false; hideLoading('tx'); }
+    finally {
+      this.loadingMore = false;
+      if (reset) hideLoading('tx');
+      else hideLoadMore();
+    }
   },
   async loadMoreTransactions() {
     if (this.currentPage > this.lastPage || this.loadingMore) return;
