@@ -477,7 +477,7 @@ const cash = {
 let chartOverview, chartWeekday, chartDoughnut;
 let analyticsChartsReady = false;
 let overviewMonths = 6;
-let topTxLimit = 5;
+let topTxLimit = 100;
 let heatmapYear = new Date().getFullYear();
 let heatmapData = null;
 const analyticsCache = { overview: null, top: null, weekday: null, dashboard: null };
@@ -501,6 +501,7 @@ function invalidateMonth(month) {
   Object.keys(pageCache).forEach(k => {
     if (k.startsWith('transactions:' + month)) delete pageCache[k];
   });
+  delete pageCache['heatmap:' + month.split('-')[0]];
 }
 
 function invalidateAll() {
@@ -613,8 +614,11 @@ function renderKPIs(data) {
 }
 
 async function loadHeatmap() {
+  const cached = cacheGet('heatmap:' + heatmapYear);
+  if (cached) { heatmapData = cached; renderHeatmap(); return; }
   try {
     heatmapData = await api.get(`/api/analytics/heatmap?year=${heatmapYear}`);
+    cacheSet('heatmap:' + heatmapYear, heatmapData);
     renderHeatmap();
   } catch { /* ignore */ }
 }
@@ -666,33 +670,49 @@ function renderHeatmap() {
 function renderTopTransactions(data) {
   const container = document.getElementById('top-transactions-container');
   if (!data) { container.innerHTML = ''; return; }
-  const hasIncome = data.top_income?.length;
-  const hasExpense = data.top_expense?.length;
-  if (!hasIncome && !hasExpense) { container.innerHTML = '<div class="empty-state" style="margin-top:0">Sin transacciones este mes</div>'; return; }
 
-  const renderList = (title, items, isExpense) => `
-    <div style="margin-bottom:${isExpense ? 0 : '16px'}">
-      <div style="font-size:14px;font-weight:600;color:${isExpense ? 'var(--red)' : 'var(--green)'};margin-bottom:10px">${title}</div>
-      ${items.map(t => {
-        const color = t.category?.color_hex || (isExpense ? 'var(--red)' : 'var(--green)');
-        const icon = t.category?.icon || 'circle';
-        return `
-          <div class="top-tx-card">
-            <div class="tx-icon" style="color:${color};background:${color}22">${getCategoryIcon(icon, color)}</div>
-            <div class="tx-info">
-              <div class="tx-n">${escapeHtml(t.note || t.category?.name || 'Sin descripción')}</div>
-              <div class="tx-d">${new Date(t.date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}${t.category ? ' • ' + escapeHtml(t.category.name) : ''}</div>
-            </div>
-            <div class="tx-amt" style="color:${isExpense ? 'var(--red)' : 'var(--green)'}">${isExpense ? '-' : '+'}${ui.formatMoney(t.amount)}</div>
-          </div>`;
-      }).join('')}
+  const items = [
+    ...(data.top_expense || []).map(t => ({ ...t, _type: 'expense' })),
+    ...(data.top_income || []).map(t => ({ ...t, _type: 'income' }))
+  ].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+
+  if (!items.length) { container.innerHTML = '<div class="empty-state" style="margin-top:0">Sin transacciones este mes</div>'; return; }
+
+  const visibleCount = Math.min(5, items.length);
+  const hiddenCount = items.length - visibleCount;
+
+  const cardHtml = items.map((t, i) => {
+    const isExpense = t._type === 'expense';
+    const color = t.category?.color_hex || (isExpense ? 'var(--red)' : 'var(--green)');
+    const icon = t.category?.icon || 'circle';
+    const date = new Date(t.date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    const desc = escapeHtml(t.note || t.category?.name || 'Sin descripción');
+    const catName = t.category ? escapeHtml(t.category.name) : '';
+    const sign = isExpense ? '-' : '+';
+    const amt = ui.formatMoney(t.amount);
+    const isHidden = i >= visibleCount;
+    const tooltip = `${desc}${catName ? ' • ' + catName : ''} • ${date} • ${sign}${amt}`;
+    return `<div class="card-item${isHidden ? ' hidden-card' : ''}" data-tooltip="${escapeHtml(tooltip)}">
+      <div class="card-item__icon" style="color:${color};background:${color}22">${getCategoryIcon(icon, color)}</div>
+      <div class="card-item__body">
+        <div class="card-item__desc">${desc}</div>
+        <div class="card-item__meta">${date}${catName ? ' • ' + catName : ''}</div>
+      </div>
+      <div class="card-item__amount" style="color:${isExpense ? 'var(--red)' : 'var(--green)'}">${sign}${amt}</div>
     </div>`;
+  }).join('');
 
-  container.innerHTML = (hasExpense ? renderList('Mayores gastos', data.top_expense, true) : '')
-    + (hasIncome ? renderList('Mayores ingresos', data.top_income, false) : '')
-    + (topTxLimit >= 100
-      ? '<button class="btn-view-all" id="btn-view-less-top">Ver menos</button>'
-      : '<button class="btn-view-all" id="btn-view-all-top">Ver todos</button>');
+  const expandBtn = hiddenCount > 0
+    ? `<button class="expand-btn">+${hiddenCount} más</button>`
+    : '';
+
+  container.innerHTML = `<div class="ledger-stack" id="ledger-stack-top">
+    <div class="ledger-stack__header">
+      <span>Mayores transacciones</span>
+      <span style="font-size:12px;color:var(--secondary)">${items.length} en total</span>
+    </div>
+    <div class="ledger-stack__cards">${cardHtml}${expandBtn}</div>
+  </div>`;
 }
 
 function renderForecast(data) {
@@ -1432,16 +1452,14 @@ document.getElementById('overview-months').addEventListener('click', (e) => {
   app.loadAnalyticsData();
 });
 
-// Top transactions "Ver todos" / "Ver menos"
+// Top transactions card fan expand/collapse
 document.getElementById('top-transactions-container').addEventListener('click', (e) => {
-  if (e.target.id === 'btn-view-all-top') {
-    topTxLimit = 100;
-    app.loadAnalyticsData();
-  }
-  if (e.target.id === 'btn-view-less-top') {
-    topTxLimit = 5;
-    app.loadAnalyticsData();
-  }
+  const btn = e.target.closest('.expand-btn');
+  if (!btn) return;
+  const stack = document.getElementById('ledger-stack-top');
+  const isExpanded = stack.classList.toggle('expanded');
+  const hiddenCount = stack.querySelectorAll('.hidden-card').length;
+  btn.textContent = isExpanded ? '✕ Cerrar' : '+' + hiddenCount + ' más';
 });
 
 // Heatmap year navigation

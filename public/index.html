@@ -706,21 +706,27 @@
   .kpi-card .kpi-label { font-size: 12px; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.3px; }
   .kpi-card .kpi-sub { font-size: 13px; color: var(--secondary); margin-top: 2px; }
 
-  .top-tx-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-  @media (max-width: 600px) { .top-tx-grid { grid-template-columns: 1fr; } }
-  .top-tx-card {
-    background: var(--surface); border-radius: 16px; padding: 14px;
-    border: 1px solid var(--separator); display: flex; align-items: center; gap: 12px;
-  }
-  .top-tx-card .tx-icon {
-    width: 36px; height: 36px; border-radius: 10px;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
-  .top-tx-card .tx-icon svg { width: 18px; height: 18px; }
-  .top-tx-card .tx-info { flex: 1; min-width: 0; }
-  .top-tx-card .tx-info .tx-n { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .top-tx-card .tx-info .tx-d { font-size: 12px; color: var(--secondary); }
-  .top-tx-card .tx-amt { font-size: 16px; font-weight: 700; }
+  .ledger-stack { margin-bottom: 20px; }
+  .ledger-stack__header { display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; margin-bottom: 12px; padding: 0 2px; }
+  .ledger-stack__cards { display: flex; flex-direction: column; position: relative; overflow: visible; }
+  .card-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--separator); border-radius: 14px; transition: all 0.3s ease; position: relative; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); z-index: 1; }
+  .card-item + .card-item { margin-top: -12px; }
+  .card-item:hover { transform: translateY(-3px); z-index: 10; border-color: rgba(255,255,255,0.16); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .hidden-card { display: none; }
+  .ledger-stack.expanded .card-item { margin-top: 0; }
+  .ledger-stack.expanded .hidden-card { display: flex; }
+  .ledger-stack.expanded .ledger-stack__cards { flex-wrap: wrap; gap: 10px; flex-direction: row; }
+  .ledger-stack.expanded .card-item { flex: 0 0 calc(50% - 5px); }
+  @media (max-width: 600px) { .ledger-stack.expanded .card-item { flex: 0 0 100%; } }
+  .expand-btn { align-self: center; background: var(--elevated); border: 1px solid var(--separator); border-radius: 20px; padding: 8px 16px; color: var(--text); cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; margin-top: 8px; transition: all 0.2s; }
+  .expand-btn:hover { background: var(--surface); border-color: var(--accent); }
+  .card-item[data-tooltip]:hover::after { content: attr(data-tooltip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 6px 10px; border-radius: 8px; font-size: 12px; white-space: nowrap; z-index: 100; pointer-events: none; backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+  .card-item__icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .card-item__icon svg { width: 18px; height: 18px; }
+  .card-item__body { flex: 1; min-width: 0; }
+  .card-item__desc { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-item__meta { font-size: 12px; color: var(--secondary); }
+  .card-item__amount { font-size: 16px; font-weight: 700; white-space: nowrap; }
 
   .chart-grid {
     display: grid;
@@ -1369,6 +1375,7 @@
   .recon-icon,
   .forecast-icon-box,
   .top-tx-card .tx-icon,
+  .card-item__icon,
   .day-cat,
   .icon-option {
     background: var(--iconbox-bg);
@@ -1544,12 +1551,12 @@
 
   /* ── 2. SPOTLIGHT HOVER (CSS-only) ── */
   .apple-card, .day-card, .cat-card, .kpi-card, .top-tx-card,
-  .chart-card, .feature-card, .recon-row, .denom-item, .selector-card {
+  .card-item, .chart-card, .feature-card, .recon-row, .denom-item, .selector-card {
     position: relative;
     overflow: hidden;
   }
   .apple-card::before, .day-card::before, .cat-card::before,
-  .kpi-card::before, .top-tx-card::before, .chart-card::before,
+  .kpi-card::before, .top-tx-card::before, .card-item::before, .chart-card::before,
   .feature-card::before, .recon-row::before, .denom-item::before,
   .selector-card::before {
     content: '';
@@ -1563,14 +1570,14 @@
     border-radius: inherit;
   }
   .apple-card:hover::before, .day-card:hover::before, .cat-card:hover::before,
-  .kpi-card:hover::before, .top-tx-card:hover::before, .chart-card:hover::before,
+  .kpi-card:hover::before, .top-tx-card:hover::before, .card-item:hover::before, .chart-card:hover::before,
   .feature-card:hover::before, .recon-row:hover::before, .denom-item:hover::before,
   .selector-card:hover::before {
     opacity: 1;
   }
   /* Spotlight con borde brillante en hover */
   .apple-card:hover, .day-card:hover, .cat-card:hover, .kpi-card:hover,
-  .top-tx-card:hover, .chart-card:hover, .feature-card:hover,
+  .top-tx-card:hover, .card-item:hover, .chart-card:hover, .feature-card:hover,
   .recon-row:hover, .denom-item:hover {
     border-color: rgba(255, 255, 255, 0.18);
   }
@@ -3227,7 +3234,7 @@
   <!-- ===== SPLASH ===== -->
   <div id="splash">
     <div class="spinner"></div>
-    <div style="margin-top:16px;font-size:15px;color:var(--secondary);font-weight:500">Ledger</div>
+    <div style="margin-top:16px;font-size:15px;color:var(--secondary);font-weight:500">Spplitt</div>
   </div>
 
   <!-- ===== AUTH PAGES ===== -->
@@ -3237,7 +3244,7 @@
       <div class="auth-logo" style="margin:0 auto 24px">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
       </div>
-      <h1>Ledger</h1>
+      <h1>Spplitt</h1>
       <p>Controla tus finanzas personales de forma simple y visual. Registra ingresos, gastos y mantén el control de tu dinero.</p>
       <div class="btn-row">
         <button class="btn-primary" id="btn-show-login">Iniciar sesión</button>
