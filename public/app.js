@@ -381,6 +381,7 @@ const cash = {
       await api.post('/api/reconciliation', { counted: this.total, note });
       ui.toast('Reconciliación registrada');
       document.getElementById('recon-note').value = '';
+      invalidateMonth(app.month);
       await app.loadData();
       await this.loadHistory();
     } catch (e) { ui.toast('Error: ' + e.message); }
@@ -463,6 +464,31 @@ let topTxLimit = 5;
 let heatmapYear = new Date().getFullYear();
 let heatmapData = null;
 const analyticsCache = { overview: null, top: null, weekday: null, dashboard: null };
+
+const CACHE_TTL = 300000;
+const pageCache = {};
+
+function cacheSet(key, data) {
+  pageCache[key] = { data, ts: Date.now() };
+}
+
+function cacheGet(key) {
+  const entry = pageCache[key];
+  if (entry && Date.now() - entry.ts < CACHE_TTL) return entry.data;
+  return null;
+}
+
+function invalidateMonth(month) {
+  const prefixes = ['dashboard:', 'top:', 'weekday:'];
+  prefixes.forEach(p => delete pageCache[p + month]);
+  Object.keys(pageCache).forEach(k => {
+    if (k.startsWith('transactions:' + month)) delete pageCache[k];
+  });
+}
+
+function invalidateAll() {
+  Object.keys(pageCache).forEach(k => delete pageCache[k]);
+}
 
 function initCharts() {
 }
@@ -799,10 +825,16 @@ const app = {
   async loadData() {
     showLoading('home');
     try {
-      const [categories, dashboard] = await Promise.all([
-        api.get('/api/categories'),
-        api.get(`/api/dashboard?month=${this.month}`)
-      ]);
+      let categories = cacheGet('categories');
+      let dashboard = cacheGet('dashboard:' + this.month);
+      if (!categories || !dashboard) {
+        const [freshCategories, freshDashboard] = await Promise.all([
+          categories ? null : api.get('/api/categories'),
+          dashboard ? null : api.get(`/api/dashboard?month=${this.month}`)
+        ]);
+        if (freshCategories) { categories = freshCategories; cacheSet('categories', categories); }
+        if (freshDashboard) { dashboard = freshDashboard; cacheSet('dashboard:' + this.month, dashboard); }
+      }
       this.categories = categories;
       this.budgets = dashboard.budgets || [];
       cash.setBalance(dashboard.balance);
@@ -821,16 +853,35 @@ const app = {
   },
   async loadAnalyticsData() {
     try {
-      const results = await Promise.allSettled([
-        api.get(`/api/analytics/overview?months=${overviewMonths}`),
-        api.get(`/api/analytics/top-transactions?month=${this.month}&limit=${topTxLimit}`),
-        api.get(`/api/analytics/weekday?month=${this.month}`),
-        api.get('/api/analytics/forecast?horizon=3'),
-      ]);
-      const overview = results[0].status === 'fulfilled' ? results[0].value : [];
-      const topTransactions = results[1].status === 'fulfilled' ? results[1].value : null;
-      const weekday = results[2].status === 'fulfilled' ? results[2].value : [];
-      const forecast = results[3].status === 'fulfilled' ? results[3].value : null;
+      let overview = cacheGet('overview:' + overviewMonths);
+      let topTransactions = cacheGet('top:' + this.month);
+      let weekday = cacheGet('weekday:' + this.month);
+      let forecast = cacheGet('forecast');
+      if (!overview || !topTransactions || !weekday || !forecast) {
+        const results = await Promise.allSettled([
+          overview ? null : api.get(`/api/analytics/overview?months=${overviewMonths}`),
+          topTransactions ? null : api.get(`/api/analytics/top-transactions?month=${this.month}&limit=${topTxLimit}`),
+          weekday ? null : api.get(`/api/analytics/weekday?month=${this.month}`),
+          forecast ? null : api.get('/api/analytics/forecast?horizon=3'),
+        ]);
+        if (results[0].status === 'fulfilled' && results[0].value) {
+          overview = results[0].value;
+          cacheSet('overview:' + overviewMonths, overview);
+        }
+        if (results[1].status === 'fulfilled' && results[1].value) {
+          topTransactions = results[1].value;
+          cacheSet('top:' + this.month, topTransactions);
+        }
+        if (results[2].status === 'fulfilled' && results[2].value) {
+          weekday = results[2].value;
+          cacheSet('weekday:' + this.month, weekday);
+        }
+        if (results[3].status === 'fulfilled' && results[3].value) {
+          forecast = results[3].value;
+          cacheSet('forecast', forecast);
+        }
+      }
+      overview = overview || [];
       analyticsCache.overview = overview;
       analyticsCache.top = topTransactions;
       analyticsCache.weekday = weekday;
@@ -838,7 +889,7 @@ const app = {
       if (forecast) renderForecast(forecast);
       if (analyticsChartsReady) {
         updateOverviewChart(overview);
-        updateWeekdayChart(weekday);
+        updateWeekdayChart(weekday || []);
       }
       if (overview.length) {
         const avgBalance = overview.reduce((sum, m) => sum + m.balance, 0) / overview.length;
@@ -852,7 +903,18 @@ const app = {
   async loadTransactions(reset = false) {
     showLoading('tx');
     if (this.loadingMore) return;
+    const cacheKey = reset ? 'transactions:' + this.month + ':' + this.typeFilter + (this.searchQuery ? ':q=' + this.searchQuery : '') : null;
     if (reset) {
+      const cached = cacheGet(cacheKey);
+      if (cached) {
+        this.transactions = cached.transactions;
+        this.currentPage = cached.currentPage;
+        this.lastPage = cached.lastPage;
+        this.loadingMore = false;
+        this.renderTimeline();
+        hideLoading('tx');
+        return;
+      }
       this.transactions = [];
       this.currentPage = 1;
       this.lastPage = 1;
@@ -860,10 +922,18 @@ const app = {
     if (this.currentPage > this.lastPage) return;
     this.loadingMore = true;
     try {
-      const response = await api.get(`/api/transactions?month=${this.month}&type=${this.typeFilter}&page=${this.currentPage}${this.searchQuery ? '&q=' + encodeURIComponent(this.searchQuery) : ''}`);
+      const perPage = reset ? 500 : 20;
+      const response = await api.get(`/api/transactions?month=${this.month}&type=${this.typeFilter}&page=${this.currentPage}&per_page=${perPage}${this.searchQuery ? '&q=' + encodeURIComponent(this.searchQuery) : ''}`);
       this.transactions = this.transactions.concat(response.data);
       this.lastPage = response.last_page;
       this.currentPage = response.current_page + 1;
+      if (reset) {
+        cacheSet(cacheKey, {
+          transactions: this.transactions,
+          currentPage: this.currentPage,
+          lastPage: this.lastPage
+        });
+      }
       this.renderTimeline();
     } catch (e) { ui.toastError('Error al cargar transacciones: ' + e.message); }
     finally { this.loadingMore = false; hideLoading('tx'); }
@@ -898,6 +968,7 @@ const app = {
     try {
       await api.del(`/api/transactions/${id}`);
       ui.toast('Transacción eliminada');
+      invalidateMonth(this.month);
       await this.loadData();
     } catch (e) { ui.toast('Error: ' + e.message); }
   },
@@ -906,6 +977,7 @@ const app = {
     try {
       await api.del(`/api/categories/${id}`);
       ui.toast('Categoría eliminada');
+      invalidateAll();
       await this.loadData();
     } catch (e) { ui.toast('Error: ' + e.message); }
   },
@@ -999,6 +1071,7 @@ const app = {
       await api.post('/api/budgets', { category_id: categoryId, limit: parseFloat(limit) });
       ui.toast('Presupuesto guardado');
       modals.closeAll();
+      invalidateMonth(this.month);
       await this.loadData();
     } catch (e) { ui.toast('Error: ' + e.message); }
   },
@@ -1222,6 +1295,7 @@ document.getElementById('btn-add-transaction').addEventListener('click', async (
     document.getElementById('tx-amount').value = '';
     document.getElementById('tx-note').value = '';
     modals.closeAll();
+    invalidateMonth(app.month);
     await app.loadData();
   } catch (e) { ui.toast('Error: ' + e.message); }
 });
@@ -1257,6 +1331,7 @@ document.getElementById('btn-add-category').addEventListener('click', async () =
     document.getElementById('cat-name').value = '';
     document.getElementById('cat-budget-limit').value = '';
     modals.closeAll();
+    invalidateAll();
     await app.loadData();
   } catch (e) { ui.toast('Error: ' + e.message); }
 });
@@ -1270,6 +1345,7 @@ document.getElementById('btn-delete-budget').addEventListener('click', async () 
     await api.del(`/api/budgets/${id}`);
     ui.toast('Presupuesto eliminado');
     modals.closeAll();
+    invalidateMonth(app.month);
     await app.loadData();
   } catch (e) { ui.toast('Error: ' + e.message); }
 });
