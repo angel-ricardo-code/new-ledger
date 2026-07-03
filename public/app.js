@@ -661,7 +661,7 @@ function renderHeatmap() {
     const ratio = d.expense / maxExpense;
     const level = !ratio ? '' : ratio < 0.25 ? 'l1' : ratio < 0.5 ? 'l2' : ratio < 0.75 ? 'l3' : 'l4';
     const title = `${d.date}: $${ui.formatMoney(d.expense)} en gastos`;
-    els.push(`<div class="cell ${level}" style="grid-row:${row};grid-column:${col}" title="${title}"></div>`);
+    els.push(`<div class="cell ${level}" style="grid-row:${row};grid-column:${col}" title="${title}" data-index="${i}"></div>`);
   }
 
   grid.innerHTML = els.join('');
@@ -671,47 +671,39 @@ function renderTopTransactions(data) {
   const container = document.getElementById('top-transactions-container');
   if (!data) { container.innerHTML = ''; return; }
 
-  const items = [
-    ...(data.top_expense || []).map(t => ({ ...t, _type: 'expense' })),
-    ...(data.top_income || []).map(t => ({ ...t, _type: 'income' }))
-  ].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  const noData = !data.top_expense?.length && !data.top_income?.length;
+  if (noData) { container.innerHTML = '<div class="empty-state" style="margin-top:0">Sin transacciones este mes</div>'; return; }
 
-  if (!items.length) { container.innerHTML = '<div class="empty-state" style="margin-top:0">Sin transacciones este mes</div>'; return; }
+  const renderStack = (items, isExpense) => {
+    if (!items || !items.length) return '';
+    const sorted = [...items].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+    const visibleCount = Math.min(3, sorted.length);
+    const hiddenCount = sorted.length - visibleCount;
 
-  const visibleCount = Math.min(5, items.length);
-  const hiddenCount = items.length - visibleCount;
+    const cards = sorted.map((t, i) => {
+      const color = t.category?.color_hex || (isExpense ? 'var(--red)' : 'var(--green)');
+      const icon = t.category?.icon || 'circle';
+      const date = new Date(t.date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+      const desc = escapeHtml(t.note || t.category?.name || 'Sin descripción');
+      const catName = t.category ? escapeHtml(t.category.name) : '';
+      const sign = isExpense ? '-' : '+';
+      const amt = ui.formatMoney(t.amount);
+      const isHidden = i >= visibleCount;
+      const catHtml = catName ? `<div class="tt-cat">${catName}</div>` : '';
+      return `<div class="card-item${isHidden ? ' hidden-card' : ''}" tabindex="0">
+        <span class="card-icon" style="color:${color};background:${color}22">${getCategoryIcon(icon, color)}</span>
+        <span class="card-date">${date}</span>
+        <div class="card-tooltip">${catHtml}<div class="tt-date">${date}</div><div class="tt-desc">${desc}</div><div class="tt-amount" style="color:${isExpense ? 'var(--red)' : 'var(--green)'}">${sign}${amt}</div></div>
+      </div>`;
+    }).join('');
 
-  const cardHtml = items.map((t, i) => {
-    const isExpense = t._type === 'expense';
-    const color = t.category?.color_hex || (isExpense ? 'var(--red)' : 'var(--green)');
-    const icon = t.category?.icon || 'circle';
-    const date = new Date(t.date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-    const desc = escapeHtml(t.note || t.category?.name || 'Sin descripción');
-    const catName = t.category ? escapeHtml(t.category.name) : '';
-    const sign = isExpense ? '-' : '+';
-    const amt = ui.formatMoney(t.amount);
-    const isHidden = i >= visibleCount;
-    const tooltip = `${desc}${catName ? ' • ' + catName : ''} • ${date} • ${sign}${amt}`;
-    return `<div class="card-item${isHidden ? ' hidden-card' : ''}" data-tooltip="${escapeHtml(tooltip)}">
-      <div class="card-item__icon" style="color:${color};background:${color}22">${getCategoryIcon(icon, color)}</div>
-      <div class="card-item__body">
-        <div class="card-item__desc">${desc}</div>
-        <div class="card-item__meta">${date}${catName ? ' • ' + catName : ''}</div>
-      </div>
-      <div class="card-item__amount" style="color:${isExpense ? 'var(--red)' : 'var(--green)'}">${sign}${amt}</div>
-    </div>`;
-  }).join('');
+    const btn = hiddenCount > 0 ? `<button class="expand-btn">+${hiddenCount}</button>` : '';
+    return `<div class="ledger-stack"><div class="ledger-stack__label">${isExpense ? 'Gastos' : 'Ingresos'}</div><div class="ledger-stack__cards">${cards}${btn}</div></div>`;
+  };
 
-  const expandBtn = hiddenCount > 0
-    ? `<button class="expand-btn">+${hiddenCount} más</button>`
-    : '';
-
-  container.innerHTML = `<div class="ledger-stack" id="ledger-stack-top">
-    <div class="ledger-stack__header">
-      <span>Mayores transacciones</span>
-      <span style="font-size:12px;color:var(--secondary)">${items.length} en total</span>
-    </div>
-    <div class="ledger-stack__cards">${cardHtml}${expandBtn}</div>
+  container.innerHTML = `<div class="tx-split">
+    ${renderStack(data.top_expense, true)}
+    ${renderStack(data.top_income, false)}
   </div>`;
 }
 
@@ -1456,10 +1448,11 @@ document.getElementById('overview-months').addEventListener('click', (e) => {
 document.getElementById('top-transactions-container').addEventListener('click', (e) => {
   const btn = e.target.closest('.expand-btn');
   if (!btn) return;
-  const stack = document.getElementById('ledger-stack-top');
+  const stack = btn.closest('.ledger-stack');
+  if (!stack) return;
   const isExpanded = stack.classList.toggle('expanded');
   const hiddenCount = stack.querySelectorAll('.hidden-card').length;
-  btn.textContent = isExpanded ? '✕ Cerrar' : '+' + hiddenCount + ' más';
+  btn.textContent = isExpanded ? '✕' : '+' + hiddenCount;
 });
 
 // Heatmap year navigation
@@ -1492,6 +1485,14 @@ document.getElementById('currency-select').addEventListener('change', async (e) 
   cash.renderDenominations();
   cash.reset();
   app.renderAll();
+  // Update heatmap cell titles with current currency
+  if (heatmapData && heatmapData.length) {
+    document.querySelectorAll('#heatmap-grid .cell[data-index]').forEach(el => {
+      const idx = parseInt(el.dataset.index);
+      const d = heatmapData[idx];
+      if (d) el.title = d.date + ': $' + ui.formatMoney(d.expense) + ' en gastos';
+    });
+  }
 });
 
 // Swipe to edit on mobile
