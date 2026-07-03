@@ -12,13 +12,14 @@ class ReconciliationController extends Controller
 {
     public function store(StoreReconciliationRequest $request): JsonResponse
     {
-        $all = Transaction::where('user_id', auth()->id())->whereIn('type', ['income', 'expense', 'reconciliation'])->get();
-        $expected = $all->sum(fn($t) => match ($t->type) {
-            'income' => $t->amount,
-            'expense' => -$t->amount,
-            'reconciliation' => $t->amount,
-            default => 0,
-        });
+        $expected = (float) Transaction::where('user_id', auth()->id())
+            ->whereIn('type', ['income', 'expense', 'reconciliation'])
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN type = 'income' THEN amount END), 0)
+                - COALESCE(SUM(CASE WHEN type = 'expense' THEN amount END), 0)
+                + COALESCE(SUM(CASE WHEN type = 'reconciliation' THEN amount END), 0)
+                as expected
+            ")->value('expected');
 
         $difference = (float) $request->counted - $expected;
 

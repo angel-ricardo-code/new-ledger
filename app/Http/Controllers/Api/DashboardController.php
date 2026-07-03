@@ -16,14 +16,11 @@ class DashboardController extends Controller
         $month = $request->month ?? date('Y-m');
 
         return Cache::remember('dashboard_' . $month . '_user_' . auth()->id(), 60, function () use ($month) {
-        [$year, $monthNum] = explode('-', $month);
-
         $startDate = "{$month}-01";
         $endDate = date('Y-m-t', strtotime($startDate));
 
         $transactions = Transaction::where('user_id', auth()->id())
-            ->whereYear('date', $year)
-            ->whereMonth('date', $monthNum)
+            ->whereBetween('date', [$startDate, $endDate])
             ->with('category')
             ->get();
 
@@ -60,11 +57,14 @@ class DashboardController extends Controller
         $prevMonth = date('Y-m', strtotime($month . '-01 -1 month'));
         $prevStart = "{$prevMonth}-01";
         $prevEnd = date('Y-m-t', strtotime($prevStart));
-        $prevTx = Transaction::where('user_id', auth()->id())->whereBetween('date', [$prevStart, $prevEnd])->get();
-        $prevTotals = $prevTx->groupBy('type')->map(fn($g) => $g->sum('amount'));
-        $prevIncome = $prevTotals->get('income', 0);
-        $prevExpense = $prevTotals->get('expense', 0);
-        $prevReconciliation = $prevTotals->get('reconciliation', 0);
+        $prevTotals = Transaction::where('user_id', auth()->id())
+            ->whereBetween('date', [$prevStart, $prevEnd])
+            ->selectRaw("type, SUM(amount) as total")
+            ->groupBy('type')
+            ->pluck('total', 'type');
+        $prevIncome = (float) ($prevTotals['income'] ?? 0);
+        $prevExpense = (float) ($prevTotals['expense'] ?? 0);
+        $prevReconciliation = (float) ($prevTotals['reconciliation'] ?? 0);
         $prevBalance = $prevIncome - $prevExpense + $prevReconciliation;
 
         $lastRecon = Transaction::where('user_id', auth()->id())->where('type', 'reconciliation')
@@ -78,10 +78,9 @@ class DashboardController extends Controller
             ->count();
         $avgDailyExpense = $daysInMonth > 0 ? $expenseTotal / $daysInMonth : 0;
 
-        $allExpenses = Transaction::where('user_id', auth()->id())
+        $totalExpenseAll = (float) Transaction::where('user_id', auth()->id())
             ->where('type', 'expense')
-            ->get();
-        $totalExpenseAll = $allExpenses->sum('amount');
+            ->sum('amount');
         $firstTx = Transaction::where('user_id', auth()->id())->oldest('date')->first();
         $daysSinceFirst = $firstTx ? max(1, now()->diffInDays($firstTx->date)) : 1;
         $historicalAvgExpense = round($totalExpenseAll / $daysSinceFirst, 2);
@@ -101,35 +100,43 @@ class DashboardController extends Controller
         $allRecon = Transaction::where('user_id', auth()->id())->where('type', 'reconciliation')->sum('amount');
         $globalBalance = (float) ($allIncome - $allExpense + $allRecon);
 
-        $firstTx = Transaction::where('user_id', auth()->id())->oldest('date')->first();
         $totalMonths = $firstTx
             ? now()->diffInMonths($firstTx->date->startOfMonth()) + 1
             : 1;
         $monthlyAvg = $totalMonths > 0 ? round($globalBalance / $totalMonths, 2) : 0;
-
         $budgets = Budget::where('user_id', auth()->id())
             ->with('category')
-            ->get()
-            ->map(function ($budget) use ($year, $monthNum) {
-                $spent = (float) Transaction::where('user_id', auth()->id())
-                    ->where('category_id', $budget->category_id)
-                    ->where('type', 'expense')
-                    ->whereYear('date', $year)
-                    ->whereMonth('date', $monthNum)
-                    ->sum('amount');
-                return [
-                    'id' => $budget->id,
-                    'category_id' => $budget->category_id,
-                    'limit' => (float) $budget->limit,
-                    'spent' => $spent,
-                    'percentage' => $budget->limit > 0 ? round($spent / $budget->limit * 100, 1) : 0,
-                    'category' => [
-                        'name' => $budget->category->name,
-                        'color_hex' => $budget->category->color_hex,
-                        'icon' => $budget->category->icon,
-                    ],
-                ];
-            });
+            ->get();
+
+        $categoryIds = $budgets->pluck('category_id')->filter()->values()->toArray();
+        $spentByCategory = [];
+        if (!empty($categoryIds)) {
+            $spentByCategory = Transaction::where('user_id', auth()->id())
+                ->whereIn('category_id', $categoryIds)
+                ->where('type', 'expense')
+                ->whereBetween('date', [$startDate, $endDate])
+                ->selectRaw("category_id, SUM(amount) as total")
+                ->groupBy('category_id')
+                ->pluck('total', 'category_id')
+                ->map(fn($v) => (float) $v)
+                ->toArray();
+        }
+
+        $budgets = $budgets->map(function ($budget) use ($spentByCategory) {
+            $spent = $spentByCategory[$budget->category_id] ?? 0;
+            return [
+                'id' => $budget->id,
+                'category_id' => $budget->category_id,
+                'limit' => (float) $budget->limit,
+                'spent' => $spent,
+                'percentage' => $budget->limit > 0 ? round($spent / $budget->limit * 100, 1) : 0,
+                'category' => [
+                    'name' => $budget->category->name,
+                    'color_hex' => $budget->category->color_hex,
+                    'icon' => $budget->category->icon,
+                ],
+            ];
+        });
 
         return response()->json([
             'balance' => $balance,

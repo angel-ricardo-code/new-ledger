@@ -12,29 +12,37 @@ class AnalyticsController extends Controller
     public function overview(Request $request): JsonResponse
     {
         $months = (int) ($request->months ?? 6);
-        $result = [];
+        $startDate = now()->subMonths($months - 1)->startOfMonth()->format('Y-m-d');
+        $endDate = now()->endOfMonth()->format('Y-m-d');
 
+        $rows = Transaction::where('user_id', auth()->id())
+            ->whereBetween('date', [$startDate, $endDate])
+            ->selectRaw("to_char(date, 'YYYY-MM') as month_key, type, SUM(amount) as total")
+            ->groupByRaw("to_char(date, 'YYYY-MM'), type")
+            ->orderBy('month_key')
+            ->get();
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $key = $row->month_key;
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = ['income' => 0, 'expense' => 0, 'reconciliation' => 0];
+            }
+            $grouped[$key][$row->type] = (float) $row->total;
+        }
+
+        $result = [];
         for ($i = $months - 1; $i >= 0; $i--) {
             $date = now()->subMonths($i);
-            $year = $date->year;
-            $month = $date->month;
-
-            $txs = Transaction::where('user_id', auth()->id())
-                ->whereYear('date', $year)
-                ->whereMonth('date', $month)
-                ->get();
-
-            $income = $txs->where('type', 'income')->sum('amount');
-            $expense = $txs->where('type', 'expense')->sum('amount');
-            $reconciliation = $txs->where('type', 'reconciliation')->sum('amount');
-
+            $monthKey = $date->format('Y-m');
+            $data = $grouped[$monthKey] ?? ['income' => 0, 'expense' => 0, 'reconciliation' => 0];
             $result[] = [
-                'month' => $date->format('Y-m'),
+                'month' => $monthKey,
                 'label' => $date->format('M Y'),
-                'income' => (float) $income,
-                'expense' => (float) $expense,
-                'reconciliation' => (float) $reconciliation,
-                'balance' => (float) ($income - $expense + $reconciliation),
+                'income' => $data['income'],
+                'expense' => $data['expense'],
+                'reconciliation' => $data['reconciliation'],
+                'balance' => $data['income'] - $data['expense'] + $data['reconciliation'],
             ];
         }
 
@@ -44,12 +52,12 @@ class AnalyticsController extends Controller
     public function topTransactions(Request $request): JsonResponse
     {
         $month = $request->month ?? now()->format('Y-m');
-        [$year, $monthNum] = explode('-', $month);
         $limit = (int) ($request->limit ?? 5);
+        $startDate = "{$month}-01";
+        $endDate = date('Y-m-t', strtotime($startDate));
 
         $query = Transaction::where('user_id', auth()->id())
-            ->whereYear('date', $year)
-            ->whereMonth('date', $monthNum)
+            ->whereBetween('date', [$startDate, $endDate])
             ->with('category');
 
         $income = (clone $query)->where('type', 'income')
@@ -110,25 +118,27 @@ class AnalyticsController extends Controller
     public function weekday(Request $request): JsonResponse
     {
         $month = $request->month ?? now()->format('Y-m');
-        [$year, $monthNum] = explode('-', $month);
+        $startDate = "{$month}-01";
+        $endDate = date('Y-m-t', strtotime($startDate));
 
-        $transactions = Transaction::where('user_id', auth()->id())
-            ->whereYear('date', $year)
-            ->whereMonth('date', $monthNum)
+        $rows = Transaction::where('user_id', auth()->id())
+            ->whereBetween('date', [$startDate, $endDate])
             ->where('type', 'expense')
-            ->get();
+            ->selectRaw("EXTRACT(DOW FROM date) as dow, SUM(amount) as total, COUNT(*) as count")
+            ->groupByRaw("EXTRACT(DOW FROM date)")
+            ->get()
+            ->keyBy('dow');
 
         $daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-        $weekdayData = array_fill(0, 7, ['day' => 0, 'label' => '', 'total' => 0, 'count' => 0]);
-
+        $weekdayData = [];
         foreach ($daysOfWeek as $i => $label) {
-            $weekdayData[$i] = ['day' => $i, 'label' => $label, 'total' => 0, 'count' => 0];
-        }
-
-        foreach ($transactions as $t) {
-            $dow = (int) $t->date->format('w');
-            $weekdayData[$dow]['total'] += (float) $t->amount;
-            $weekdayData[$dow]['count']++;
+            $row = $rows->get($i);
+            $weekdayData[] = [
+                'day' => $i,
+                'label' => $label,
+                'total' => (float) ($row->total ?? 0),
+                'count' => (int) ($row->count ?? 0),
+            ];
         }
 
         return response()->json($weekdayData);
@@ -141,6 +151,7 @@ class AnalyticsController extends Controller
         $transactions = Transaction::where('user_id', auth()->id())
             ->where('type', 'expense')
             ->where('date', '<', now()->startOfMonth()->toDateString())
+            ->where('date', '>=', now()->subMonths(60)->startOfMonth()->toDateString())
             ->get(['date', 'amount']);
 
         $monthlyData = $transactions->groupBy(fn($t) => $t->date->format('Y-m'))
@@ -204,6 +215,7 @@ class AnalyticsController extends Controller
     {
         return [
             'id' => $t->id,
+            'type' => $t->type,
             'amount' => (float) $t->amount,
             'note' => $t->note,
             'date' => $t->date->format('Y-m-d'),

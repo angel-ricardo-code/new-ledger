@@ -16,11 +16,11 @@ class ExportController extends Controller
         $format = $request->format ?? 'csv';
         $theme = in_array($request->theme, ['dark', 'light']) ? $request->theme : 'dark';
 
-        [$year, $monthNum] = explode('-', $month);
+        $startDate = "{$month}-01";
+        $endDate = date('Y-m-t', strtotime($startDate));
 
         $transactions = Transaction::where('user_id', auth()->id())
-            ->whereYear('date', $year)
-            ->whereMonth('date', $monthNum)
+            ->whereBetween('date', [$startDate, $endDate])
             ->with('category')
             ->orderBy('date', 'desc')
             ->orderBy('id', 'desc')
@@ -63,29 +63,39 @@ class ExportController extends Controller
 
         $avgDailyExpense = $daysInMonth > 0 ? round($expenseTotal / $daysInMonth, 2) : 0;
 
-        $allExpenses = Transaction::where('user_id', auth()->id())->where('type', 'expense')->get();
-        $totalExpenseAll = (float) $allExpenses->sum('amount');
+        $totalExpenseAll = (float) Transaction::where('user_id', auth()->id())->where('type', 'expense')->sum('amount');
         $firstTx = Transaction::where('user_id', auth()->id())->oldest('date')->first();
         $daysSinceFirst = $firstTx ? max(1, now()->diffInDays($firstTx->date)) : 1;
         $historicalAvgExpense = round($totalExpenseAll / $daysSinceFirst, 2);
 
+        $overviewStart = now()->subMonths(5)->startOfMonth()->format('Y-m-d');
+        $overviewEnd = now()->endOfMonth()->format('Y-m-d');
+        $overviewRows = Transaction::where('user_id', auth()->id())
+            ->whereBetween('date', [$overviewStart, $overviewEnd])
+            ->selectRaw("to_char(date, 'YYYY-MM') as month_key, type, SUM(amount) as total")
+            ->groupByRaw("to_char(date, 'YYYY-MM'), type")
+            ->orderBy('month_key')
+            ->get();
+
+        $overviewGrouped = [];
+        foreach ($overviewRows as $row) {
+            $key = $row->month_key;
+            if (!isset($overviewGrouped[$key])) {
+                $overviewGrouped[$key] = ['income' => 0, 'expense' => 0, 'reconciliation' => 0];
+            }
+            $overviewGrouped[$key][$row->type] = (float) $row->total;
+        }
+
         $overview = [];
         for ($i = 5; $i >= 0; $i--) {
             $d = now()->subMonths($i);
-            $y = $d->year;
-            $m = $d->month;
-            $txs = Transaction::where('user_id', auth()->id())
-                ->whereYear('date', $y)
-                ->whereMonth('date', $m)
-                ->get();
-            $inc = (float) $txs->where('type', 'income')->sum('amount');
-            $exp = (float) $txs->where('type', 'expense')->sum('amount');
-            $rec = (float) $txs->where('type', 'reconciliation')->sum('amount');
+            $monthKey = $d->format('Y-m');
+            $data = $overviewGrouped[$monthKey] ?? ['income' => 0, 'expense' => 0, 'reconciliation' => 0];
             $overview[] = [
                 'label' => $d->format('M Y'),
-                'income' => $inc,
-                'expense' => $exp,
-                'balance' => round($inc - $exp + $rec, 2),
+                'income' => $data['income'],
+                'expense' => $data['expense'],
+                'balance' => round($data['income'] - $data['expense'] + $data['reconciliation'], 2),
             ];
         }
 
@@ -101,12 +111,16 @@ class ExportController extends Controller
             ->latest('date')->first();
 
         $prevMonth = date('Y-m', strtotime($month . '-01 -1 month'));
-        [$prevY, $prevM] = explode('-', $prevMonth);
-        $prevTx = Transaction::where('user_id', auth()->id())
-            ->whereYear('date', $prevY)->whereMonth('date', $prevM)->get();
-        $prevInc = (float) $prevTx->where('type', 'income')->sum('amount');
-        $prevExp = (float) $prevTx->where('type', 'expense')->sum('amount');
-        $prevRec = (float) $prevTx->where('type', 'reconciliation')->sum('amount');
+        $prevStart = "{$prevMonth}-01";
+        $prevEnd = date('Y-m-t', strtotime($prevStart));
+        $prevTotals = Transaction::where('user_id', auth()->id())
+            ->whereBetween('date', [$prevStart, $prevEnd])
+            ->selectRaw("type, SUM(amount) as total")
+            ->groupBy('type')
+            ->pluck('total', 'type');
+        $prevInc = (float) ($prevTotals['income'] ?? 0);
+        $prevExp = (float) ($prevTotals['expense'] ?? 0);
+        $prevRec = (float) ($prevTotals['reconciliation'] ?? 0);
         $prevBalance = round($prevInc - $prevExp + $prevRec, 2);
         $vsPrevious = round($balance - $prevBalance, 2);
 

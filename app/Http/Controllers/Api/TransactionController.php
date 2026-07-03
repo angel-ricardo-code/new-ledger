@@ -16,8 +16,9 @@ class TransactionController extends Controller
         $query = Transaction::where('user_id', auth()->id())->with('category');
 
         if ($request->filled('month')) {
-            [$year, $month] = explode('-', $request->month);
-            $query->whereYear('date', $year)->whereMonth('date', $month);
+            $startDate = $request->month . '-01';
+            $endDate = date('Y-m-t', strtotime($startDate));
+            $query->whereBetween('date', [$startDate, $endDate]);
         }
 
         if ($request->filled('type') && $request->type !== 'all') {

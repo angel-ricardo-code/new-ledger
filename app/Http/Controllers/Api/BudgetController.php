@@ -15,32 +15,42 @@ class BudgetController extends Controller
     {
         $userId = auth()->id();
         $month = request('month', date('Y-m'));
-        [$year, $monthNum] = explode('-', $month);
+        $startDate = "{$month}-01";
+        $endDate = date('Y-m-t', strtotime($startDate));
 
         $budgets = Budget::where('user_id', $userId)
             ->with('category')
-            ->get()
-            ->map(function ($budget) use ($year, $monthNum) {
-                $spent = (float) Transaction::where('user_id', auth()->id())
-                    ->where('category_id', $budget->category_id)
-                    ->where('type', 'expense')
-                    ->whereYear('date', $year)
-                    ->whereMonth('date', $monthNum)
-                    ->sum('amount');
+            ->get();
 
-                return [
-                    'id' => $budget->id,
-                    'category_id' => $budget->category_id,
-                    'limit' => (float) $budget->limit,
-                    'spent' => $spent,
-                    'percentage' => $budget->limit > 0 ? round($spent / $budget->limit * 100, 1) : 0,
-                    'category' => [
-                        'name' => $budget->category->name,
-                        'color_hex' => $budget->category->color_hex,
-                        'icon' => $budget->category->icon,
-                    ],
-                ];
-            });
+        $categoryIds = $budgets->pluck('category_id')->filter()->values()->toArray();
+        $spentByCategory = [];
+        if (!empty($categoryIds)) {
+            $spentByCategory = Transaction::where('user_id', $userId)
+                ->whereIn('category_id', $categoryIds)
+                ->where('type', 'expense')
+                ->whereBetween('date', [$startDate, $endDate])
+                ->selectRaw("category_id, SUM(amount) as total")
+                ->groupBy('category_id')
+                ->pluck('total', 'category_id')
+                ->map(fn($v) => (float) $v)
+                ->toArray();
+        }
+
+        $budgets = $budgets->map(function ($budget) use ($spentByCategory) {
+            $spent = $spentByCategory[$budget->category_id] ?? 0;
+            return [
+                'id' => $budget->id,
+                'category_id' => $budget->category_id,
+                'limit' => (float) $budget->limit,
+                'spent' => $spent,
+                'percentage' => $budget->limit > 0 ? round($spent / $budget->limit * 100, 1) : 0,
+                'category' => [
+                    'name' => $budget->category->name,
+                    'color_hex' => $budget->category->color_hex,
+                    'icon' => $budget->category->icon,
+                ],
+            ];
+        });
 
         return response()->json($budgets);
     }

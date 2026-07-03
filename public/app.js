@@ -159,6 +159,13 @@ function hideLoadMore() {
   document.getElementById('tx-load-more').style.setProperty('display', 'none');
 }
 
+function showAnalyticsLoading() {
+  document.getElementById('analytics-loading-overlay').style.removeProperty('display');
+}
+function hideAnalyticsLoading() {
+  document.getElementById('analytics-loading-overlay').style.setProperty('display', 'none');
+}
+
 function checkPasswordStrength(pw) {
   const checks = {
     length: pw.length >= 8,
@@ -667,6 +674,24 @@ function renderHeatmap() {
   grid.innerHTML = els.join('');
 }
 
+function updateHeatmapCell(dateStr, deltaExpense) {
+  if (!heatmapData || !heatmapData.length) return;
+  const idx = heatmapData.findIndex(d => d.date === dateStr);
+  if (idx === -1) return;
+  const oldExpense = heatmapData[idx].expense;
+  const newExpense = Math.max(0, oldExpense + deltaExpense);
+  heatmapData[idx].expense = newExpense;
+  const grid = document.getElementById('heatmap-grid');
+  if (!grid) return renderHeatmap();
+  const cell = grid.querySelector(`.cell[data-index="${idx}"]`);
+  if (!cell) return renderHeatmap();
+  const maxExpense = Math.max(...heatmapData.map(d => d.expense), 1);
+  const ratio = newExpense / maxExpense;
+  const level = !ratio ? '' : ratio < 0.25 ? 'l1' : ratio < 0.5 ? 'l2' : ratio < 0.75 ? 'l3' : 'l4';
+  cell.className = `cell ${level}`;
+  cell.title = `${dateStr}: $${ui.formatMoney(newExpense)} en gastos`;
+}
+
 function renderTopTransactions(data) {
   const container = document.getElementById('top-transactions-container');
   if (!data) { container.innerHTML = ''; return; }
@@ -690,7 +715,7 @@ function renderTopTransactions(data) {
       const amt = ui.formatMoney(t.amount);
       const isHidden = i >= visibleCount;
       const catHtml = catName ? `<div class="tt-cat">${catName}</div>` : '';
-      return `<div class="card-item${isHidden ? ' hidden-card' : ''}" tabindex="0">
+      return `<div class="card-item${isHidden ? ' hidden-card' : ''}" tabindex="0" data-id="${t.id}">
         <span class="card-icon" style="color:${color};background:${color}22">${getCategoryIcon(icon, color)}</span>
         <span class="card-date">${date}</span>
         <div class="card-tooltip">${catHtml}<div class="tt-date">${date}</div><div class="tt-desc">${desc}</div><div class="tt-amount" style="color:${isExpense ? 'var(--red)' : 'var(--green)'}">${sign}${amt}</div></div>
@@ -845,13 +870,13 @@ const app = {
     await cash.loadRates();
     currentRate = currentCurrency === 'CUP' ? 1 : 1 / ((cash.rates?.[currentCurrency]?.rate_to_cup) || 1);
     await this.loadData();
-    await this.loadAnalyticsData();
+    loadHeatmap();
     await cash.loadHistory();
     hideLoading('home');
     hideLoading('analytics');
     hideLoading('cash');
   },
-  async loadData() {
+  async loadData(backgroundAnalytics = false) {
     showLoading('home');
     try {
       let categories = cacheGet('categories');
@@ -876,11 +901,16 @@ const app = {
       if (analyticsChartsReady) updateDoughnut(dashboard);
       renderKPIs(dashboard);
       await this.loadTransactions(true);
-      await this.loadAnalyticsData();
+      if (backgroundAnalytics) {
+        this.loadAnalyticsData(true);
+      } else {
+        await this.loadAnalyticsData();
+      }
     } catch (e) { ui.toastError('Error al cargar: ' + e.message); }
     finally { hideLoading('home'); }
   },
-  async loadAnalyticsData() {
+  async loadAnalyticsData(showOverlay = false) {
+    if (showOverlay) showAnalyticsLoading();
     try {
       let overview = cacheGet('overview:' + overviewMonths);
       let topTransactions = cacheGet('top:' + this.month);
@@ -926,8 +956,8 @@ const app = {
         document.getElementById('avg-balance').textContent = formatted;
         document.getElementById('cash-monthly-avg').textContent = formatted;
       }
-      heatmapData = null; loadHeatmap();
     } catch (e) { ui.toastError('Error al cargar análisis: ' + e.message); }
+    finally { if (showOverlay) hideAnalyticsLoading(); }
   },
   async loadTransactions(reset = false) {
     if (this.loadingMore) return;
@@ -1321,19 +1351,20 @@ document.getElementById('btn-add-transaction').addEventListener('click', async (
   if (data.note.length > 255) { ui.toast('La nota no puede exceder 255 caracteres'); return; }
   if (data.date > new Date().toISOString().split('T')[0]) { ui.toast('La fecha no puede ser futura'); return; }
   try {
-    if (app.editingTransactionId) {
+    const wasEditing = !!app.editingTransactionId;
+    if (wasEditing) {
       await api.patch(`/api/transactions/${app.editingTransactionId}`, data);
       app.editingTransactionId = null;
-      ui.toast('Transacción actualizada');
     } else {
       await api.post('/api/transactions', data);
-      ui.toast('Transacción agregada');
     }
     document.getElementById('tx-amount').value = '';
     document.getElementById('tx-note').value = '';
     modals.closeAll();
+    ui.toast(wasEditing ? 'Transacción actualizada' : 'Transacción agregada');
     invalidateMonth(app.month);
-    await app.loadData();
+    await app.loadData(true);
+    updateHeatmapCell(data.date, data.type === 'expense' ? data.amount : 0);
   } catch (e) { ui.toast('Error: ' + e.message); }
 });
 
@@ -1453,6 +1484,44 @@ document.getElementById('top-transactions-container').addEventListener('click', 
   const isExpanded = stack.classList.toggle('expanded');
   const hiddenCount = stack.querySelectorAll('.hidden-card').length;
   btn.textContent = isExpanded ? '✕' : '+' + hiddenCount;
+});
+
+// Open transaction detail modal on card click
+document.getElementById('top-transactions-container').addEventListener('click', (e) => {
+  const card = e.target.closest('.card-item');
+  if (!card) return;
+  const id = parseInt(card.dataset.id);
+  const allTxs = [];
+  if (analyticsCache.top) {
+    allTxs.push(...(analyticsCache.top.top_expense || []), ...(analyticsCache.top.top_income || []));
+  }
+  const tx = allTxs.find(t => t.id === id);
+  if (!tx) return;
+
+  const color = tx.category?.color_hex || (tx.type === 'expense' ? '#FF453A' : '#30D158');
+  const icon = tx.category?.icon || 'circle';
+  const catName = tx.category?.name || 'Sin categor\u00eda';
+  const dateStr = new Date(tx.date + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const note = tx.note || 'Sin descripci\u00f3n';
+  const sign = tx.type === 'expense' ? '-' : '+';
+  const amt = ui.formatMoney(tx.amount);
+  const typeLabel = tx.type === 'expense' ? 'Gasto' : 'Ingreso';
+
+  const iconEl = document.getElementById('detail-icon');
+  iconEl.innerHTML = getCategoryIcon(icon, color);
+  iconEl.style.color = color;
+  iconEl.style.background = color + '22';
+  document.getElementById('detail-category').textContent = catName;
+  document.getElementById('detail-category').style.color = color;
+  document.getElementById('detail-badge').textContent = typeLabel;
+  document.getElementById('detail-badge').style.color = tx.type === 'expense' ? 'var(--red)' : 'var(--green)';
+  document.getElementById('detail-badge').style.borderColor = tx.type === 'expense' ? 'var(--red)' : 'var(--green)';
+  document.getElementById('detail-amount').textContent = sign + amt;
+  document.getElementById('detail-amount').style.color = tx.type === 'expense' ? 'var(--red)' : 'var(--green)';
+  document.getElementById('detail-date').textContent = dateStr;
+  document.getElementById('detail-note').textContent = note;
+
+  modals.open('modal-transaction-detail');
 });
 
 // Heatmap year navigation
