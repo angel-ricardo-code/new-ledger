@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
+            \App\Http\Middleware\AuthenticateWithCookie::class,
         ]);
         $middleware->statefulApi();
         $middleware->web(append: [

@@ -23,8 +23,10 @@ class AuthController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+        $token = $user->createToken('auth')->plainTextToken;
 
-        return response()->json(['user' => $user], 201);
+        return response()->json(['user' => $user], 201)
+            ->cookie('auth_token', $token, 60 * 24 * 365, '/', null, true, true, false, 'Strict');
     }
 
     public function login(Request $request): JsonResponse
@@ -34,12 +36,12 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        if (Auth::attempt(
-            $request->only('username', 'password'),
-            $request->boolean('remember')
-        )) {
+        if (Auth::attempt($request->only('username', 'password'))) {
             $request->session()->regenerate();
-            return response()->json(['user' => Auth::user()]);
+            $user = Auth::user();
+            $token = $user->createToken('auth')->plainTextToken;
+            return response()->json(['user' => $user])
+                ->cookie('auth_token', $token, 60 * 24 * 365, '/', null, true, true, false, 'Strict');
         }
 
         throw ValidationException::withMessages([
@@ -49,11 +51,13 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        $request->user()?->currentAccessToken()?->delete();
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return response()->json(['message' => 'Sesión cerrada']);
+        return response()->json(['message' => 'Sesión cerrada'])
+            ->withoutCookie('auth_token');
     }
 
     public function user(Request $request): JsonResponse

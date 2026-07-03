@@ -243,14 +243,12 @@ const auth = {
   async login() {
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
-    const remember = document.getElementById('login-remember')?.checked || false;
     const errEl = document.getElementById('login-error');
     if (!username || !password) { errEl.textContent = 'Completa todos los campos'; errEl.classList.add('visible'); return; }
     if (!/^[a-zA-Z0-9_]+$/.test(username)) { errEl.textContent = 'El usuario solo puede contener letras, números y guiones bajos'; errEl.classList.add('visible'); return; }
     try {
       document.getElementById('btn-login').disabled = true;
-      await api.csrf();
-      const res = await api.post('/api/login', { username, password, remember });
+      const res = await api.post('/api/login', { username, password });
       this.user = res.user;
       this.showApp();
       app.init();
@@ -274,7 +272,6 @@ const auth = {
     if (password !== confirm) { errEl.textContent = 'Las contraseñas no coinciden'; errEl.classList.add('visible'); return; }
     try {
       document.getElementById('btn-register').disabled = true;
-      await api.csrf();
       const res = await api.post('/api/register', { username, email, password, password_confirmation: confirm });
       this.user = res.user;
       this.showApp();
@@ -1601,9 +1598,7 @@ document.getElementById('btn-login').addEventListener('click', () => auth.login(
 document.getElementById('btn-register').addEventListener('click', () => auth.register());
 
 // Remember checkbox toggle
-document.getElementById('login-remember').addEventListener('change', (e) => {
-  document.getElementById('check-remember').classList.toggle('pass', e.target.checked);
-});
+
 document.getElementById('check-remember').addEventListener('click', () => {
   const cb = document.getElementById('login-remember');
   cb.checked = !cb.checked;
