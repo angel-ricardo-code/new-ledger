@@ -26,7 +26,9 @@ const getCategoryIcon = (icon, color = '#8E8E93') => ICONS[icon] || ICONS.circle
 
 const api = {
   parseError(res, text) {
-    console.error('API Error', res.status, res.url, text);
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.error('API Error', res.status, res.url, text);
+    }
     try {
       const json = JSON.parse(text);
       if (json.message) return json.message;
@@ -491,6 +493,11 @@ const pageCache = {};
 
 function cacheSet(key, data) {
   pageCache[key] = { data, ts: Date.now() };
+  const keys = Object.keys(pageCache);
+  if (keys.length > 100) {
+    const oldest = keys.reduce((a, b) => pageCache[a].ts < pageCache[b].ts ? a : b);
+    delete pageCache[oldest];
+  }
 }
 
 function cacheGet(key) {
@@ -506,10 +513,13 @@ function invalidateMonth(month) {
     if (k.startsWith('transactions:' + month)) delete pageCache[k];
   });
   delete pageCache['heatmap:' + month.split('-')[0]];
+  delete pageCache['overview:' + overviewMonths];
+  delete pageCache['forecast'];
 }
 
 function invalidateAll() {
   Object.keys(pageCache).forEach(k => delete pageCache[k]);
+  analyticsCache = { overview: null, top: null, weekday: null, dashboard: null };
 }
 
 function initCharts() {
@@ -1022,10 +1032,14 @@ const app = {
     if (newDate > currentMonth) return;
     this.month = newDate.toISOString().slice(0, 7);
     this.updateMonthLabels();
+    this._monthVersion = (this._monthVersion || 0) + 1;
+    const version = this._monthVersion;
     clearTimeout(this._monthTimer);
-    this._monthTimer = setTimeout(() => {
-      this.loadData();
-      this.loadAnalyticsData();
+    this._monthTimer = setTimeout(async () => {
+      if (version !== this._monthVersion) return;
+      await this.loadData();
+      if (version !== this._monthVersion) return;
+      await this.loadAnalyticsData();
     }, 150);
   },
   async deleteTransaction(id) {
@@ -1264,6 +1278,7 @@ document.getElementById('timeline-container').addEventListener('click', async (e
     const tx = app.transactions.find(t => t.id == id);
     if (!tx) return;
     app.editingTransactionId = id;
+    app.editingTransactionDate = tx.date.split('T')[0];
     document.getElementById('modal-transaction').querySelector('.modal-title').textContent = 'Editar Transacción';
     document.getElementById('btn-add-transaction').textContent = 'Guardar';
     document.getElementById('tx-date').value = tx.date.split('T')[0];
@@ -1311,6 +1326,7 @@ document.getElementById('category-list').addEventListener('click', async (e) => 
 document.getElementById('sel-transaction').addEventListener('click', () => {
   modals.closeAll();
   app.editingTransactionId = null;
+  app.editingTransactionDate = null;
   document.getElementById('modal-transaction').querySelector('.modal-title').textContent = 'Nueva Transacción';
   document.getElementById('btn-add-transaction').textContent = 'Agregar';
   document.getElementById('tx-amount').value = '';
@@ -1349,9 +1365,11 @@ document.getElementById('btn-add-transaction').addEventListener('click', async (
   if (data.date > new Date().toISOString().split('T')[0]) { ui.toast('La fecha no puede ser futura'); return; }
   try {
     const wasEditing = !!app.editingTransactionId;
+    const origMonth = app.editingTransactionDate?.slice(0, 7);
     if (wasEditing) {
       await api.patch(`/api/transactions/${app.editingTransactionId}`, data);
       app.editingTransactionId = null;
+      app.editingTransactionDate = null;
     } else {
       await api.post('/api/transactions', data);
     }
@@ -1360,6 +1378,7 @@ document.getElementById('btn-add-transaction').addEventListener('click', async (
     modals.closeAll();
     ui.toast(wasEditing ? 'Transacción actualizada' : 'Transacción agregada');
     invalidateMonth(app.month);
+    if (origMonth && origMonth !== app.month) invalidateMonth(origMonth);
     await app.loadData(true);
     updateHeatmapCell(data.date, data.type === 'expense' ? data.amount : 0);
   } catch (e) { ui.toast('Error: ' + e.message); }

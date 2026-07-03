@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Traits\ClearsDashboardCache;
 use App\Http\Requests\StoreBudgetRequest;
 use App\Models\Budget;
 use App\Models\Transaction;
@@ -11,6 +12,17 @@ use Illuminate\Support\Facades\Cache;
 
 class BudgetController extends Controller
 {
+    use ClearsDashboardCache {
+        forgetDashboardCache as traitForgetDashboardCache;
+    }
+
+    protected function forgetDashboardCache(?string $date = null): void
+    {
+        $suffix = '_user_' . auth()->id();
+        foreach (range(-12, 12) as $offset) {
+            Cache::forget('dashboard_' . date('Y-m', strtotime("$offset months")) . $suffix);
+        }
+    }
     public function index(): JsonResponse
     {
         $userId = auth()->id();
@@ -86,12 +98,4 @@ class BudgetController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    private function forgetDashboardCache(): void
-    {
-        $suffix = '_user_' . auth()->id();
-        $month = request('month', date('Y-m'));
-        Cache::forget('dashboard_' . $month . $suffix);
-        $prevMonth = date('Y-m', strtotime($month . '-01 -1 month'));
-        Cache::forget('dashboard_' . $prevMonth . $suffix);
-    }
 }

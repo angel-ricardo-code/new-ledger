@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
+    public static function clearUserDashboardCache(): void
+    {
+        $suffix = '_user_' . auth()->id();
+        foreach (range(-12, 12) as $offset) {
+            Cache::forget('dashboard_' . date('Y-m', strtotime("$offset months")) . $suffix);
+        }
+    }
     public function index(Request $request): JsonResponse
     {
         $month = $request->month ?? date('Y-m');

@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Traits\ClearsDashboardCache;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 
 class TransactionController extends Controller
 {
+    use ClearsDashboardCache;
     public function index(Request $request): JsonResponse
     {
         $query = Transaction::where('user_id', auth()->id())->with('category');
@@ -50,8 +51,10 @@ class TransactionController extends Controller
     public function update(StoreTransactionRequest $request, int $id): JsonResponse
     {
         $transaction = Transaction::where('user_id', auth()->id())->findOrFail($id);
+        $oldDate = $transaction->date->format('Y-m-d');
         $transaction->update($request->validated());
         $transaction->load('category');
+        $this->forgetDashboardCache($oldDate);
         $this->forgetDashboardCache($transaction->date->format('Y-m-d'));
         return response()->json($transaction);
     }
@@ -64,12 +67,4 @@ class TransactionController extends Controller
         return response()->json(null, 204);
     }
 
-    private function forgetDashboardCache(string $date): void
-    {
-        $month = substr($date, 0, 7);
-        $suffix = '_user_' . auth()->id();
-        Cache::forget('dashboard_' . $month . $suffix);
-        $prevMonth = date('Y-m', strtotime($month . '-01 -1 month'));
-        Cache::forget('dashboard_' . $prevMonth . $suffix);
-    }
 }

@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Traits\ClearsDashboardCache;
 use App\Http\Requests\StoreReconciliationRequest;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 
 class ReconciliationController extends Controller
 {
+    use ClearsDashboardCache;
     public function store(StoreReconciliationRequest $request): JsonResponse
     {
         $expected = (float) Transaction::where('user_id', auth()->id())
@@ -43,10 +44,7 @@ class ReconciliationController extends Controller
             'note' => $note,
         ]);
 
-        $month = now()->format('Y-m');
-        $suffix = '_user_' . auth()->id();
-        Cache::forget('dashboard_' . $month . $suffix);
-        Cache::forget('dashboard_' . now()->subMonth()->format('Y-m') . $suffix);
+        $this->forgetDashboardCache(now()->format('Y-m-d'));
 
         return response()->json($transaction, 201);
     }
