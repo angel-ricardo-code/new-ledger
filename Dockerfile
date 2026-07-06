@@ -1,7 +1,12 @@
 FROM php:8.2-fpm-alpine
 
-RUN apk add --no-cache nginx supervisor postgresql-dev composer \
-    && docker-php-ext-install pdo_pgsql opcache
+RUN apk add --no-cache postgresql-dev \
+    && docker-php-ext-install pdo_pgsql opcache \
+    && apk del postgresql-dev \
+    && apk add --no-cache nginx supervisor libpq \
+    && php -r "copy('https://getcomposer.org/installer', '/tmp/composer-setup.php');" \
+    && php /tmp/composer-setup.php --install-dir=/usr/bin --filename=composer --quiet \
+    && rm /tmp/composer-setup.php
 
 COPY . /var/www
 WORKDIR /var/www
