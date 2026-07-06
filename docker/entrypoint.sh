@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-PORT=${PORT:-80}
+PORT=${PORT:-3000}
 
 # Generate APP_KEY if not set
 if [ -z "$APP_KEY" ]; then
