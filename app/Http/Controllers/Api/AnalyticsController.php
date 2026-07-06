@@ -6,47 +6,50 @@ use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class AnalyticsController extends Controller
 {
     public function overview(Request $request): JsonResponse
     {
         $months = (int) ($request->months ?? 6);
-        $startDate = now()->subMonths($months - 1)->startOfMonth()->format('Y-m-d');
-        $endDate = now()->endOfMonth()->format('Y-m-d');
+        return response()->json(Cache::remember('overview_' . auth()->id() . '_' . $months, 300, function () use ($months) {
+            $startDate = now()->subMonths($months - 1)->startOfMonth()->format('Y-m-d');
+            $endDate = now()->endOfMonth()->format('Y-m-d');
 
-        $rows = Transaction::where('user_id', auth()->id())
-            ->whereBetween('date', [$startDate, $endDate])
-            ->selectRaw("to_char(date, 'YYYY-MM') as month_key, type, SUM(amount) as total")
-            ->groupByRaw("to_char(date, 'YYYY-MM'), type")
-            ->orderBy('month_key')
-            ->get();
+            $rows = Transaction::where('user_id', auth()->id())
+                ->whereBetween('date', [$startDate, $endDate])
+                ->selectRaw("to_char(date, 'YYYY-MM') as month_key, type, SUM(amount) as total")
+                ->groupByRaw("to_char(date, 'YYYY-MM'), type")
+                ->orderBy('month_key')
+                ->get();
 
-        $grouped = [];
-        foreach ($rows as $row) {
-            $key = $row->month_key;
-            if (!isset($grouped[$key])) {
-                $grouped[$key] = ['income' => 0, 'expense' => 0, 'reconciliation' => 0];
+            $grouped = [];
+            foreach ($rows as $row) {
+                $key = $row->month_key;
+                if (!isset($grouped[$key])) {
+                    $grouped[$key] = ['income' => 0, 'expense' => 0, 'reconciliation' => 0];
+                }
+                $grouped[$key][$row->type] = (float) $row->total;
             }
-            $grouped[$key][$row->type] = (float) $row->total;
-        }
 
-        $result = [];
-        for ($i = $months - 1; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
-            $monthKey = $date->format('Y-m');
-            $data = $grouped[$monthKey] ?? ['income' => 0, 'expense' => 0, 'reconciliation' => 0];
-            $result[] = [
-                'month' => $monthKey,
-                'label' => $date->format('M Y'),
-                'income' => $data['income'],
-                'expense' => $data['expense'],
-                'reconciliation' => $data['reconciliation'],
-                'balance' => $data['income'] - $data['expense'] + $data['reconciliation'],
-            ];
-        }
+            $result = [];
+            for ($i = $months - 1; $i >= 0; $i--) {
+                $date = now()->subMonths($i);
+                $monthKey = $date->format('Y-m');
+                $data = $grouped[$monthKey] ?? ['income' => 0, 'expense' => 0, 'reconciliation' => 0];
+                $result[] = [
+                    'month' => $monthKey,
+                    'label' => $date->format('M Y'),
+                    'income' => $data['income'],
+                    'expense' => $data['expense'],
+                    'reconciliation' => $data['reconciliation'],
+                    'balance' => $data['income'] - $data['expense'] + $data['reconciliation'],
+                ];
+            }
 
-        return response()->json($result);
+            return $result;
+        }));
     }
 
     public function topTransactions(Request $request): JsonResponse
@@ -81,38 +84,44 @@ class AnalyticsController extends Controller
     public function heatmap(Request $request): JsonResponse
     {
         $year = (int) ($request->year ?? now()->year);
-        $start = "{$year}-01-01";
-        $end = "{$year}-12-31";
+        return response()->json(Cache::remember('heatmap_' . auth()->id() . '_' . $year, 300, function () use ($year) {
+            $start = "{$year}-01-01";
+            $end = "{$year}-12-31";
 
-        $transactions = Transaction::where('user_id', auth()->id())
-            ->whereBetween('date', [$start, $end])
-            ->get()
-            ->groupBy(fn($t) => $t->date->format('Y-m-d'));
+            $rows = Transaction::where('user_id', auth()->id())
+                ->whereBetween('date', [$start, $end])
+                ->selectRaw("date, type, SUM(amount) as total")
+                ->groupBy('date', 'type')
+                ->orderBy('date')
+                ->get();
 
-        $result = [];
-        $current = new \DateTime($start);
-        $endDate = new \DateTime($end);
+            $transactions = $rows->groupBy(fn($r) => $r->date->format('Y-m-d'));
 
-        while ($current <= $endDate) {
-            $date = $current->format('Y-m-d');
-            $dayTx = $transactions->get($date, collect());
+            $result = [];
+            $current = new \DateTime($start);
+            $endDate = new \DateTime($end);
 
-            $expense = (float) $dayTx->where('type', 'expense')->sum('amount');
-            $income = (float) $dayTx->where('type', 'income')->sum('amount');
-            $reconciliation = (float) $dayTx->where('type', 'reconciliation')->sum('amount');
+            while ($current <= $endDate) {
+                $date = $current->format('Y-m-d');
+                $dayTx = $transactions->get($date, collect());
 
-            $result[] = [
-                'date' => $date,
-                'income' => $income,
-                'expense' => $expense,
-                'reconciliation' => $reconciliation,
-                'net' => $income - $expense + $reconciliation,
-            ];
+                $expense = (float) $dayTx->where('type', 'expense')->sum('total');
+                $income = (float) $dayTx->where('type', 'income')->sum('total');
+                $reconciliation = (float) $dayTx->where('type', 'reconciliation')->sum('total');
 
-            $current->modify('+1 day');
-        }
+                $result[] = [
+                    'date' => $date,
+                    'income' => $income,
+                    'expense' => $expense,
+                    'reconciliation' => $reconciliation,
+                    'net' => $income - $expense + $reconciliation,
+                ];
 
-        return response()->json($result);
+                $current->modify('+1 day');
+            }
+
+            return $result;
+        }));
     }
 
     public function weekday(Request $request): JsonResponse
@@ -148,20 +157,21 @@ class AnalyticsController extends Controller
     {
         $horizon = min((int) ($request->horizon ?? 3), 6);
 
-        $transactions = Transaction::where('user_id', auth()->id())
+        return response()->json(Cache::remember('forecast_' . auth()->id(), 3600, function () use ($horizon) {
+
+        $monthlyData = Transaction::where('user_id', auth()->id())
             ->where('type', 'expense')
             ->where('date', '<', now()->startOfMonth()->toDateString())
             ->where('date', '>=', now()->subMonths(60)->startOfMonth()->toDateString())
-            ->get(['date', 'amount']);
-
-        $monthlyData = $transactions->groupBy(fn($t) => $t->date->format('Y-m'))
-            ->map(fn($g, $month) => [
-                'month' => $month,
-                'label' => \Carbon\Carbon::createFromFormat('Y-m', $month)->format('M Y'),
-                'expense' => round((float) $g->sum('amount'), 2),
+            ->selectRaw("to_char(date, 'YYYY-MM') as month_key, SUM(amount) as total")
+            ->groupBy('month_key')
+            ->orderBy('month_key')
+            ->get()
+            ->map(fn($r) => [
+                'month' => $r->month_key,
+                'label' => \Carbon\Carbon::createFromFormat('Y-m', $r->month_key)->format('M Y'),
+                'expense' => round((float) $r->total, 2),
             ])
-            ->sortBy('month')
-            ->values()
             ->toArray();
 
         $values = array_column($monthlyData, 'expense');
@@ -202,13 +212,14 @@ class AnalyticsController extends Controller
         }
         unset($pred);
 
-        return response()->json([
+        return [
             'historical' => $monthlyData,
             'predictions' => $predictions,
             'mae' => round($mae, 2),
             'method' => $method,
             'total_months' => $count,
-        ]);
+        ];
+        }));
     }
 
     private function formatTransaction($t): array

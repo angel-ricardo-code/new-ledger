@@ -8,6 +8,7 @@ use App\Http\Requests\StoreTransactionRequest;
 use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class TransactionController extends Controller
 {
@@ -45,6 +46,7 @@ class TransactionController extends Controller
         $transaction = Transaction::create($request->validated());
         $transaction->load('category');
         $this->forgetDashboardCache($request->date ?? now()->format('Y-m-d'));
+        Cache::forget('forecast_' . auth()->id());
         return response()->json($transaction, 201);
     }
 
@@ -56,14 +58,17 @@ class TransactionController extends Controller
         $transaction->load('category');
         $this->forgetDashboardCache($oldDate);
         $this->forgetDashboardCache($transaction->date->format('Y-m-d'));
+        Cache::forget('forecast_' . auth()->id());
         return response()->json($transaction);
     }
 
     public function destroy(int $id): JsonResponse
     {
         $transaction = Transaction::where('user_id', auth()->id())->findOrFail($id);
-        $this->forgetDashboardCache($transaction->date->format('Y-m-d'));
+        $date = $transaction->date->format('Y-m-d');
         $transaction->delete();
+        $this->forgetDashboardCache($date);
+        Cache::forget('forecast_' . auth()->id());
         return response()->json(null, 204);
     }
 

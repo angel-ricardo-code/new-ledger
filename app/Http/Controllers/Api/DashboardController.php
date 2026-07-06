@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Budget;
 use App\Models\Transaction;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -85,12 +86,14 @@ class DashboardController extends Controller
             ->count();
         $avgDailyExpense = $daysInMonth > 0 ? $expenseTotal / $daysInMonth : 0;
 
-        $totalExpenseAll = (float) Transaction::where('user_id', auth()->id())
-            ->where('type', 'expense')
-            ->sum('amount');
-        $firstTx = Transaction::where('user_id', auth()->id())->oldest('date')->first();
-        $daysSinceFirst = $firstTx ? max(1, now()->diffInDays($firstTx->date)) : 1;
-        $historicalAvgExpense = round($totalExpenseAll / $daysSinceFirst, 2);
+        $allTotals = Transaction::where('user_id', auth()->id())
+            ->selectRaw("type, SUM(amount) as total")
+            ->groupBy('type')
+            ->pluck('total', 'type');
+        $totalExpenseAll = (float) ($allTotals['expense'] ?? 0);
+        $firstTxDate = Transaction::where('user_id', auth()->id())->oldest('date')->value('date');
+        $daysSinceFirst = $firstTxDate ? max(1, now()->diffInDays($firstTxDate)) : 1;
+        $historicalAvgExpense = $daysSinceFirst > 0 ? round($totalExpenseAll / $daysSinceFirst, 2) : 0;
 
         $topExpenseCat = $categorySeries->sortByDesc('total')->first();
 
@@ -102,13 +105,13 @@ class DashboardController extends Controller
             ->sortByDesc('amount')
             ->first();
 
-        $allIncome = Transaction::where('user_id', auth()->id())->where('type', 'income')->sum('amount');
-        $allExpense = Transaction::where('user_id', auth()->id())->where('type', 'expense')->sum('amount');
-        $allRecon = Transaction::where('user_id', auth()->id())->where('type', 'reconciliation')->sum('amount');
-        $globalBalance = (float) ($allIncome - $allExpense + $allRecon);
+        $allIncome = (float) ($allTotals['income'] ?? 0);
+        $allExpense = $totalExpenseAll;
+        $allRecon = (float) ($allTotals['reconciliation'] ?? 0);
+        $globalBalance = $allIncome - $allExpense + $allRecon;
 
-        $totalMonths = $firstTx
-            ? now()->diffInMonths($firstTx->date->startOfMonth()) + 1
+        $totalMonths = $firstTxDate
+            ? now()->diffInMonths(\Carbon\Carbon::parse($firstTxDate)->startOfMonth()) + 1
             : 1;
         $monthlyAvg = $totalMonths > 0 ? round($globalBalance / $totalMonths, 2) : 0;
         $budgets = Budget::where('user_id', auth()->id())

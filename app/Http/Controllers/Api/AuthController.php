@@ -27,7 +27,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth')->plainTextToken;
 
         return response()->json(['user' => $user], 201)
-            ->cookie('auth_token', $token, 60 * 24 * 365, '/', null, true, true, false, 'Strict');
+            ->cookie('auth_token', $token, 60 * 24 * 365, '/', null, config('app.env') === 'production', true, false, 'Strict');
     }
 
     public function login(Request $request): JsonResponse
@@ -42,7 +42,7 @@ class AuthController extends Controller
             $user = Auth::user();
             $token = $user->createToken('auth')->plainTextToken;
             return response()->json(['user' => $user])
-                ->cookie('auth_token', $token, 60 * 24 * 365, '/', null, true, true, false, 'Strict');
+                ->cookie('auth_token', $token, 60 * 24 * 365, '/', null, config('app.env') === 'production', true, false, 'Strict');
         }
 
         throw ValidationException::withMessages([
@@ -58,9 +58,16 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        foreach (range(-6, 6) as $offset) {
+        foreach (range(-12, 12) as $offset) {
             Cache::forget('dashboard_' . date('Y-m', strtotime("$offset months")) . '_user_' . $userId);
         }
+
+        Cache::forget('forecast_' . $userId);
+        foreach ([3, 6, 12, 24] as $m) {
+            Cache::forget('overview_' . $userId . '_' . $m);
+        }
+        Cache::forget('heatmap_' . $userId . '_' . now()->year);
+        Cache::forget('heatmap_' . $userId . '_' . (now()->year - 1));
 
         return response()->json(['message' => 'Sesión cerrada'])
             ->withoutCookie('auth_token');

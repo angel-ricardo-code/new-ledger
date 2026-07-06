@@ -331,6 +331,17 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         chartWeekday?.resize();
         chartDoughnut?.resize();
       });
+      const hasCached = analyticsCache.overview || analyticsCache.top || analyticsCache.weekday;
+      if (hasCached) {
+        if (analyticsCache.overview) updateOverviewChart(analyticsCache.overview);
+        if (analyticsCache.weekday) updateWeekdayChart(analyticsCache.weekday);
+        if (analyticsCache.dashboard) updateDoughnut(analyticsCache.dashboard);
+        if (analyticsCache.top) renderTopTransactions(analyticsCache.top);
+        const cachedForecast = cacheGet('forecast');
+        if (cachedForecast) renderForecast(cachedForecast);
+      }
+      const showOverlay = !analyticsCache.overview && !analyticsCache.top && !analyticsCache.weekday;
+      app.loadAnalyticsData(showOverlay);
     }
   });
 });
@@ -519,7 +530,7 @@ function invalidateMonth(month) {
 
 function invalidateAll() {
   Object.keys(pageCache).forEach(k => delete pageCache[k]);
-  analyticsCache = { overview: null, top: null, weekday: null, dashboard: null };
+  Object.assign(analyticsCache, { overview: null, top: null, weekday: null, dashboard: null });
 }
 
 function initCharts() {
@@ -883,7 +894,7 @@ const app = {
     hideLoading('analytics');
     hideLoading('cash');
   },
-  async loadData(backgroundAnalytics = false) {
+  async loadData() {
     showLoading('home');
     try {
       let categories = cacheGet('categories');
@@ -908,11 +919,6 @@ const app = {
       if (analyticsChartsReady) updateDoughnut(dashboard);
       renderKPIs(dashboard);
       await this.loadTransactions(true);
-      if (backgroundAnalytics) {
-        this.loadAnalyticsData(true);
-      } else {
-        await this.loadAnalyticsData();
-      }
     } catch (e) { ui.toastError('Error al cargar: ' + e.message); }
     finally { hideLoading('home'); }
   },
@@ -1379,7 +1385,7 @@ document.getElementById('btn-add-transaction').addEventListener('click', async (
     ui.toast(wasEditing ? 'Transacción actualizada' : 'Transacción agregada');
     invalidateMonth(app.month);
     if (origMonth && origMonth !== app.month) invalidateMonth(origMonth);
-    await app.loadData(true);
+    await app.loadData();
     updateHeatmapCell(data.date, data.type === 'expense' ? data.amount : 0);
   } catch (e) { ui.toast('Error: ' + e.message); }
 });
@@ -1615,14 +1621,6 @@ document.getElementById('link-show-login')?.addEventListener('click', () => auth
 // Auth submit buttons (replaced inline onclick)
 document.getElementById('btn-login').addEventListener('click', () => auth.login());
 document.getElementById('btn-register').addEventListener('click', () => auth.register());
-
-// Remember checkbox toggle
-
-document.getElementById('check-remember').addEventListener('click', () => {
-  const cb = document.getElementById('login-remember');
-  cb.checked = !cb.checked;
-  cb.dispatchEvent(new Event('change'));
-});
 
 ['login-username','login-password'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') auth.login(); });

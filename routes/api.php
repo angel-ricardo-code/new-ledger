@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ReconciliationController;
 use App\Http\Controllers\Api\TransactionController;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 
@@ -19,8 +20,8 @@ RateLimiter::for('login', fn (Request $job) => Limit::perMinute(5)->by($job->ip(
 RateLimiter::for('register', fn (Request $job) => Limit::perHour(3)->by($job->ip()));
 
 // Public routes
-Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:register');
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+Route::post('/register', [AuthController::class, 'register'])->middleware([StartSession::class, 'throttle:register']);
+Route::post('/login', [AuthController::class, 'login'])->middleware([StartSession::class, 'throttle:login']);
 
 // Protected routes
 Route::middleware(['throttle:api', 'auth:sanctum'])->group(function () {
