@@ -9,7 +9,14 @@ if [ -z "$APP_KEY" ]; then
 fi
 export APP_KEY
 
-# Patch nginx to listen on Render's PORT
+# Laravel cache for production
+if [ "$APP_ENV" = "production" ]; then
+    php /var/www/artisan config:cache
+    php /var/www/artisan route:cache
+    php /var/www/artisan view:cache
+fi
+
+# Patch nginx to listen on the desired PORT
 sed -i "s/listen 80;/listen ${PORT};/" /etc/nginx/http.d/default.conf
 
 exec supervisord -c /etc/supervisord.conf

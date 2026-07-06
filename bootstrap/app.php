@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: ['api/*']);
+        $middleware->trustProxies(at: '*');
         $middleware->api(prepend: [
             \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
             \App\Http\Middleware\AuthenticateWithCookie::class,
@@ -22,7 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\ContentSecurityPolicy::class,
         ]);
         $middleware->api(append: [
-            \App\Http\Middleware\ContentSecurityPolicy::class,
+            \Illuminate\Http\Middleware\SetCacheHeaders::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

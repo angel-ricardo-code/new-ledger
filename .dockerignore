@@ -4,4 +4,13 @@ node_modules/
 .env
 .DS_Store
 *.log
+.env.example
+docker-compose.yml
+render.yaml
+.gitattributes
+.editorconfig
+phpunit.xml
+vite.config.js
+package.json
+README.md
 
