@@ -1,8 +1,8 @@
 FROM php:8.2-fpm-alpine
 
-RUN apk add --no-cache postgresql-dev \
+RUN apk add --no-cache libpq-dev \
     && docker-php-ext-install pdo_pgsql opcache \
-    && apk del postgresql-dev \
+    && apk del libpq-dev \
     && apk add --no-cache nginx supervisor libpq \
     && php -r "copy('https://getcomposer.org/installer', '/tmp/composer-setup.php');" \
     && php /tmp/composer-setup.php --install-dir=/usr/bin --filename=composer --quiet \

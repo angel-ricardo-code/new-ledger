@@ -1,51 +1,33 @@
 services:
   - type: web
-    name: ledger
-    runtime: docker
-    repo: https://github.com/tu-usuario/tu-repo
+    name: spplitt
+    env: docker
     dockerfilePath: ./Dockerfile
-    branch: main
-    autoDeploy: true
-    healthCheckPath: /
+    healthCheckPath: /health
     releaseCommand: php artisan migrate --force
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: "false"
+        value: false
+      - key: APP_KEY
+        generateValue: true
       - key: DB_CONNECTION
         value: pgsql
-      - key: DB_HOST
+      - key: DB_URL
         fromDatabase:
-          name: ledger-db
-          property: host
-      - key: DB_PORT
-        value: "5432"
-      - key: DB_DATABASE
-        fromDatabase:
-          name: ledger-db
-          property: database
-      - key: DB_USERNAME
-        fromDatabase:
-          name: ledger-db
-          property: user
-      - key: DB_PASSWORD
-        fromDatabase:
-          name: ledger-db
-          property: password
+          name: spplitt-db
+          property: connectionString
       - key: SESSION_DRIVER
-        value: database
-      - key: QUEUE_CONNECTION
-        value: database
+        value: file
       - key: CACHE_STORE
-        value: database
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
       - key: LOG_CHANNEL
         value: stderr
-    plan: free
 
 databases:
-  - name: ledger-db
-    databaseName: ledger
+  - name: spplitt-db
+    databaseName: finance
     plan: free
-    postgresMajorVersion: 16
-    ipAllowList: []
