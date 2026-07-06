@@ -1,9 +1,7 @@
 FROM php:8.2-fpm-alpine
 
-RUN apk add --no-cache nginx supervisor postgresql-dev \
+RUN apk add --no-cache nginx supervisor postgresql-dev composer \
     && docker-php-ext-install pdo_pgsql opcache
-
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 COPY . /var/www
 WORKDIR /var/www
